@@ -110,6 +110,31 @@ export const assignGarage = async (
   return res.json();
 };
 
+// ─── TENANT ───────────────────────────────────────────────────────────────────
+
+export interface MyGarage {
+  id:       number;
+  number:   string;
+  location: string | null;
+  type:     GarageType;
+  status:   GarageStatus;
+  vehicles: {
+    id:          number;
+    licensePlate: string;
+    brand:        string;
+    model:        string;
+    color:        string;
+  }[];
+}
+
+export const getMyGarages = async (token: string): Promise<MyGarage[]> => {
+  const res = await fetch(`${API_URL}/garages/my`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Error al obtener tus cocheras");
+  return res.json();
+};
+
 export const unassignGarage = async (
   token: string,
   garageId: number

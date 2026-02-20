@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { createReservation } from "../api_calls/post_reservation";
+import { Car, MapPin, CheckCircle } from "lucide-react";
 
 import { getReservationsByAmenity } from "../api_calls/get_amenity_reservations";
 import { updateUserName } from "../api_calls/update_user_name";
@@ -30,6 +31,8 @@ import useNotificationToasts from "../hooks/useNotificationToasts";
 import { NotificationToastContainer } from "../components/NotificationToast";
 import { GamificationProvider } from "../contexts/GamificationContext";
 import WelcomeSection from "../components/WelcomeSection";
+import MyVehiclesModal from "../components/MyVehiclesModal";
+import { getMyGarages, type MyGarage } from "../api_calls/garages";
 import type { UserData, ReservationData, Reservation, Amenity } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
@@ -69,6 +72,8 @@ function TenantDashboard() {
     const [successReservationData, setSuccessReservationData] = useState<{ amenityName: string; timeSlot: string } | null>(null);
     const [showReservationErrorToast, setShowReservationErrorToast] = useState(false);
     const [reservationErrorMessage, setReservationErrorMessage] = useState<string | null>(null);
+    const [showMyVehicles,  setShowMyVehicles]  = useState(false);
+    const [myGarages,       setMyGarages]       = useState<MyGarage[]>([]);
 
     const { toasts, removeToast, addToast } = useNotificationToasts();
     
@@ -193,15 +198,20 @@ function TenantDashboard() {
             
             fetch(`${API_URL}/amenities`, {
                 headers: { Authorization: `Bearer ${savedToken}` },
-            }).then((res) => res.json())
+            }).then((res) => res.json()),
+
+            getMyGarages(savedToken).catch(() => [])
         ])
-        .then(([dashboardData, amenitiesData]) => {
+        .then(([dashboardData, amenitiesData, garagesData]) => {
             if (dashboardData && dashboardData.user) {
                 setUserData(dashboardData);
                 setNewName(dashboardData.user.name);
             }
             if (Array.isArray(amenitiesData)) {
                 setAmenities(amenitiesData);
+            }
+            if (Array.isArray(garagesData)) {
+                setMyGarages(garagesData);
             }
         })
         .catch((error) => {
@@ -582,6 +592,54 @@ function TenantDashboard() {
                         cancellingId={isCancelling}
                         hidingId={isHiding}
                     />
+
+                    {/* Sección Mis Cocheras & Vehículos */}
+                    <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Mis Cocheras (read-only) */}
+                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
+                                    <MapPin className="w-4 h-4 text-slate-600" />
+                                </div>
+                                <h3 className="font-bold text-gray-800">Mis Cocheras</h3>
+                            </div>
+                            {myGarages.length === 0 ? (
+                                <p className="text-gray-400 text-sm">No tenés cocheras asignadas a tu unidad.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {myGarages.map(g => (
+                                        <div key={g.id} className="flex items-center gap-2 text-sm">
+                                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                            <span className="font-semibold text-gray-700">{g.number}</span>
+                                            {g.location && <span className="text-gray-400">· {g.location}</span>}
+                                            <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                g.type === 'fija' ? 'bg-blue-100 text-blue-700'
+                                                : g.type === 'cortesia' ? 'bg-purple-100 text-purple-700'
+                                                : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                                {g.type === 'fija' ? 'Fija' : g.type === 'cortesia' ? 'Cortesía' : 'Visitante'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Mis Vehículos */}
+                        <div
+                            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all"
+                            onClick={() => setShowMyVehicles(true)}
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
+                                    <Car className="w-4 h-4 text-slate-600" />
+                                </div>
+                                <h3 className="font-bold text-gray-800">Mis Vehículos</h3>
+                            </div>
+                            <p className="text-gray-500 text-sm mb-3">Registrá y gestioná tus vehículos.</p>
+                            <span className="text-slate-600 text-sm font-medium hover:underline">Ver mis vehículos →</span>
+                        </div>
+                    </div>
                 </>
             )}
 
@@ -695,6 +753,14 @@ function TenantDashboard() {
                 toasts={toasts}
                 onRemoveToast={removeToast}
             />
+
+            {token && (
+                <MyVehiclesModal
+                    isOpen={showMyVehicles}
+                    onClose={() => setShowMyVehicles(false)}
+                    token={token}
+                />
+            )}
 
             </div>
         </GamificationProvider>

@@ -9,7 +9,9 @@ import {
     Clock,
     BarChart3,
     Star,
-    Car
+    Car,
+    Link2,
+    Truck
 } from "lucide-react";
 
 import Header from "../components/Header";
@@ -25,6 +27,8 @@ import ClaimsManagement from "../components/ClaimsManagement";
 import AnalyticsReports from "../components/AnalyticsReports";
 import AdminRatingsView from "../components/AdminRatingsView";
 import GarageManagement from "../components/GarageManagement";
+import GarageAssignmentModal from "../components/GarageAssignmentModal";
+import VehicleManagement from "../components/VehicleManagement";
 import { LoadingOverlay } from "../components/LoadingSpinner";
 import LogoutSuccessToast from "../components/LogoutSuccessToast";
 import PasswordChangeSuccessToast from "../components/PasswordChangeSuccessToast";
@@ -57,7 +61,9 @@ function AdminDashboard() {
     const [showClaimsManagement, setShowClaimsManagement] = useState(false);
     const [showAnalyticsReports, setShowAnalyticsReports] = useState(false);
     const [showRatingsView, setShowRatingsView] = useState(false);
-    const [showGarageManagement, setShowGarageManagement] = useState(false);
+    const [showGarageManagement,    setShowGarageManagement]    = useState(false);
+    const [showGarageAssignments,   setShowGarageAssignments]   = useState(false);
+    const [showVehicleManagement,   setShowVehicleManagement]   = useState(false);
     const [showNotificationsModal, setShowNotificationsModal] = useState(false);
     const [showSuccessToast, setShowSuccessToast] = useState(false);
     const [showPasswordChangeToast, setShowPasswordChangeToast] = useState(false);
@@ -503,6 +509,50 @@ function AdminDashboard() {
                             • Ver vehículos por cochera
                         </div>
                     </motion.div>
+
+                    <motion.div 
+                        className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 cursor-pointer hover:shadow-2xl transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowGarageAssignments(true)}
+                    >
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center">
+                                <Link2 className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">Asignaciones</h3>
+                        </div>
+                        <p className="text-gray-600 mb-4">
+                            Gestioná qué cochera corresponde a cada unidad
+                        </p>
+                        <div className="text-sm text-gray-500">
+                            • Vista cochera → unidad<br />
+                            • Reasignar rápidamente<br />
+                            • Desasignar cocheras
+                        </div>
+                    </motion.div>
+
+                    <motion.div 
+                        className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 cursor-pointer hover:shadow-2xl transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowVehicleManagement(true)}
+                    >
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-12 h-12 bg-gradient-to-r from-gray-600 to-gray-800 rounded-xl flex items-center justify-center">
+                                <Truck className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">Vehículos</h3>
+                        </div>
+                        <p className="text-gray-600 mb-4">
+                            Ve todos los vehículos registrados en el edificio
+                        </p>
+                        <div className="text-sm text-gray-500">
+                            • Listado completo<br />
+                            • Filtrar por cochera, unidad<br />
+                            • Buscar por patente
+                        </div>
+                    </motion.div>
                 </div>
             </div>
 
@@ -629,6 +679,22 @@ function AdminDashboard() {
                 <GarageManagement
                     isOpen={showGarageManagement}
                     onClose={() => setShowGarageManagement(false)}
+                    token={token}
+                />
+            )}
+
+            {token && (
+                <GarageAssignmentModal
+                    isOpen={showGarageAssignments}
+                    onClose={() => setShowGarageAssignments(false)}
+                    token={token}
+                />
+            )}
+
+            {token && (
+                <VehicleManagement
+                    isOpen={showVehicleManagement}
+                    onClose={() => setShowVehicleManagement(false)}
                     token={token}
                 />
             )}
