@@ -32,6 +32,7 @@ import { NotificationToastContainer } from "../components/NotificationToast";
 import { GamificationProvider } from "../contexts/GamificationContext";
 import WelcomeSection from "../components/WelcomeSection";
 import MyVehiclesModal from "../components/MyVehiclesModal";
+import VisitorParkingModal from "../components/VisitorParkingModal";
 import { getMyGarages, type MyGarage } from "../api_calls/garages";
 import type { UserData, ReservationData, Reservation, Amenity } from "../types";
 
@@ -72,8 +73,9 @@ function TenantDashboard() {
     const [successReservationData, setSuccessReservationData] = useState<{ amenityName: string; timeSlot: string } | null>(null);
     const [showReservationErrorToast, setShowReservationErrorToast] = useState(false);
     const [reservationErrorMessage, setReservationErrorMessage] = useState<string | null>(null);
-    const [showMyVehicles,  setShowMyVehicles]  = useState(false);
-    const [myGarages,       setMyGarages]       = useState<MyGarage[]>([]);
+    const [showMyVehicles,       setShowMyVehicles]       = useState(false);
+    const [showVisitorParking,    setShowVisitorParking]    = useState(false);
+    const [myGarages,             setMyGarages]             = useState<MyGarage[]>([]);
 
     const { toasts, removeToast, addToast } = useNotificationToasts();
     
@@ -640,6 +642,23 @@ function TenantDashboard() {
                             <span className="text-slate-600 text-sm font-medium hover:underline">Ver mis vehículos →</span>
                         </div>
                     </div>
+
+                    {/* Cochera Visitante */}
+                    <div
+                        className="mt-4 bg-white rounded-2xl border border-amber-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all"
+                        onClick={() => setShowVisitorParking(true)}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center">
+                                <Car className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-bold text-gray-800">Cochera Visitante</h3>
+                                <p className="text-gray-500 text-sm">Reservá una cochera temporaria para tus visitas (máx. 48 h).</p>
+                            </div>
+                            <span className="text-amber-600 text-sm font-medium">Gestionar →</span>
+                        </div>
+                    </div>
                 </>
             )}
 
@@ -758,6 +777,14 @@ function TenantDashboard() {
                 <MyVehiclesModal
                     isOpen={showMyVehicles}
                     onClose={() => setShowMyVehicles(false)}
+                    token={token}
+                />
+            )}
+
+            {token && (
+                <VisitorParkingModal
+                    isOpen={showVisitorParking}
+                    onClose={() => setShowVisitorParking(false)}
                     token={token}
                 />
             )}
