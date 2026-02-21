@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Car, Search, Plus, Edit3, Trash2, X, MapPin, Tag,
   CheckCircle, AlertCircle, Building, Link2, Unlink,
-  Truck, User, Filter,
+  Truck, User, Filter, Clock,
 } from "lucide-react";
 import { useToast } from "./Toast";
 import {
@@ -13,6 +13,7 @@ import {
 } from "../api_calls/garages";
 import { getAdminVehicles, type AdminVehicle, type AdminVehicleFilters } from "../api_calls/vehicles";
 import { getAdminApartments, type AdminApartment } from "../api_calls/admin";
+import { adminGetAllVisitorParkings, type AdminVisitorParking } from "../api_calls/visitorParking";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ const EMPTY_GARAGE_FORM = {
 
 type FilterType   = "all" | GarageType;
 type FilterStatus = "all" | GarageStatus;
-type Tab = "cocheras" | "asignaciones" | "vehiculos";
+type Tab = "cocheras" | "asignaciones" | "vehiculos" | "visitantes";
 
 // ─── props ────────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,11 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
   const [filterGarageId,  setFilterGarageId]  = useState("");
   const [filterAptId,     setFilterAptId]     = useState("");
 
+  // ── visitor parking state ────────────────────────────────────────────────────
+  const [visitorParkings,        setVisitorParkings]        = useState<AdminVisitorParking[]>([]);
+  const [visitorParkingLoading,  setVisitorParkingLoading]  = useState(false);
+  const [visitorSearch,          setVisitorSearch]          = useState("");
+
   // ── load all ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen && token) loadAll();
@@ -106,19 +112,23 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
 
   const loadAll = async () => {
     setLoading(true);
+    setVisitorParkingLoading(true);
     try {
-      const [g, a, v] = await Promise.all([
+      const [g, a, v, vp] = await Promise.all([
         getAdminGarages(token),
         getAdminApartments(token),
         getAdminVehicles(token),
+        adminGetAllVisitorParkings(token),
       ]);
       setGarages(Array.isArray(g) ? g : []);
       setApartments(Array.isArray(a) ? a : []);
       setVehicles(Array.isArray(v) ? v : []);
+      setVisitorParkings(Array.isArray(vp) ? vp : []);
     } catch {
       showToast("Error al cargar datos", "error");
     } finally {
       setLoading(false);
+      setVisitorParkingLoading(false);
     }
   };
 
@@ -308,6 +318,7 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
     { key: "cocheras"     as Tab, label: "Cocheras",     icon: Car   },
     { key: "asignaciones" as Tab, label: "Asignaciones", icon: Link2 },
     { key: "vehiculos"    as Tab, label: "Vehículos",    icon: Truck },
+    { key: "visitantes"   as Tab, label: "Visitantes",   icon: Clock },
   ];
 
   return (
@@ -606,6 +617,16 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
             </div>
           )}
 
+          {/* ── Tab: Visitantes ─────────────────────────────────────────────── */}
+          {activeTab === "visitantes" && (
+            <VisitantesTab
+              visitorParkings={visitorParkings}
+              loading={visitorParkingLoading}
+              visitorSearch={visitorSearch}
+              setVisitorSearch={setVisitorSearch}
+            />
+          )}
+
           {/* ── Tab: Vehículos ──────────────────────────────────────────────── */}
           {activeTab === "vehiculos" && (
             <div className="p-6 space-y-4">
@@ -759,6 +780,183 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+
+interface VisitantesTabProps {
+  visitorParkings: AdminVisitorParking[];
+  loading:         boolean;
+  visitorSearch:   string;
+  setVisitorSearch: (v: string) => void;
+}
+
+function VisitantesTab({ visitorParkings, loading, visitorSearch, setVisitorSearch }: VisitantesTabProps) {
+  const now = new Date();
+
+  const filtered = visitorParkings.filter(vp => {
+    if (!visitorSearch) return true;
+    const q = visitorSearch.toLowerCase();
+    return (
+      vp.licensePlate.toLowerCase().includes(q) ||
+      (vp.visitorName ?? "").toLowerCase().includes(q) ||
+      vp.requestedBy.name.toLowerCase().includes(q) ||
+      vp.apartment.unit.toLowerCase().includes(q) ||
+      vp.garage.number.toLowerCase().includes(q)
+    );
+  });
+
+  const occupiedNow = filtered.filter(vp =>
+    vp.status === "activa" &&
+    new Date(vp.startTime) <= now &&
+    new Date(vp.endTime) >= now
+  );
+
+  const upcoming = filtered.filter(vp =>
+    vp.status === "activa" && new Date(vp.startTime) > now
+  );
+
+  const past = filtered.filter(vp =>
+    vp.status === "cancelada" || vp.status === "vencida"
+  );
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString("es-AR", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
+  const StatusBadge = ({ status }: { status: AdminVisitorParking["status"] }) => {
+    const map = {
+      activa:    "bg-green-100 text-green-800",
+      cancelada: "bg-red-100 text-red-800",
+      vencida:   "bg-gray-100 text-gray-600",
+    };
+    const labels = { activa: "Activa", cancelada: "Cancelada", vencida: "Vencida" };
+    return (
+      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status]}`}>
+        {labels[status]}
+      </span>
+    );
+  };
+
+  const Row = ({ vp, highlight }: { vp: AdminVisitorParking; highlight?: boolean }) => (
+    <tr className={`transition-colors ${highlight ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"}`}>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          {highlight && <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0 animate-pulse" />}
+          <span className="font-mono font-semibold text-gray-800 bg-gray-100 px-2 py-1 rounded-lg">
+            {vp.licensePlate}
+          </span>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-gray-700">{vp.visitorName ?? <span className="text-gray-400">—</span>}</td>
+      <td className="px-4 py-3">
+        <span className="flex items-center gap-1 text-gray-700">
+          <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          {vp.garage.number}
+          {vp.garage.location && <span className="text-gray-400 text-xs">· {vp.garage.location}</span>}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <span className="flex items-center gap-1 text-gray-700">
+          <Building className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          Unidad {vp.apartment.unit} · P{vp.apartment.floor}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <span className="flex items-center gap-1 text-gray-600">
+          <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          {vp.requestedBy.name}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{fmt(vp.startTime)}</td>
+      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{fmt(vp.endTime)}</td>
+      <td className="px-4 py-3"><StatusBadge status={vp.status} /></td>
+    </tr>
+  );
+
+  const TableShell = ({ children }: { children: React.ReactNode }) => (
+    <div className="overflow-x-auto rounded-2xl border border-gray-200">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 border-b border-gray-200">
+          <tr>
+            {["Patente", "Visitante", "Cochera", "Unidad", "Solicitado por", "Desde", "Hasta", "Estado"].map(h => (
+              <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">{children}</tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+          placeholder="Buscar por patente, visitante, unidad, cochera o solicitante..."
+          value={visitorSearch}
+          onChange={e => setVisitorSearch(e.target.value)}
+        />
+      </div>
+
+      {loading ? (
+        <div className="text-center py-16 text-gray-400">Cargando reservas de visitantes...</div>
+      ) : visitorParkings.length === 0 ? (
+        <div className="text-center py-16">
+          <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">No hay reservas de cocheras para visitantes</p>
+        </div>
+      ) : (
+        <>
+          {/* Currently occupied */}
+          {occupiedNow.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <h3 className="font-semibold text-gray-800 text-sm">Ocupadas ahora ({occupiedNow.length})</h3>
+              </div>
+              <TableShell>
+                {occupiedNow.map(vp => <Row key={vp.id} vp={vp} highlight />)}
+              </TableShell>
+            </div>
+          )}
+
+          {/* Upcoming */}
+          {upcoming.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-500" />
+                Próximas reservas ({upcoming.length})
+              </h3>
+              <TableShell>
+                {upcoming.map(vp => <Row key={vp.id} vp={vp} />)}
+              </TableShell>
+            </div>
+          )}
+
+          {/* Past / cancelled */}
+          {past.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-800 text-sm text-gray-500">
+                Historial ({past.length})
+              </h3>
+              <TableShell>
+                {past.map(vp => <Row key={vp.id} vp={vp} />)}
+              </TableShell>
+            </div>
+          )}
+
+          {filtered.length === 0 && visitorSearch && (
+            <div className="text-center py-10 text-gray-400">Sin resultados para "{visitorSearch}"</div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

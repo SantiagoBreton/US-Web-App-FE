@@ -218,6 +218,7 @@ function AdminDashboard() {
                     onLogout={handleLogout}
                     showClaimsTab={false}
                     showAmenitiesTab={false}
+                    showCocherasTab={false}
                     showGamification={false}
                 showNotifications={true}
                 notifications={notifications}

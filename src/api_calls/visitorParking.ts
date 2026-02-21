@@ -97,3 +97,40 @@ export const cancelVisitorParking = async (
   }
   return res.json();
 };
+
+export interface AdminVisitorParking {
+  id:            number;
+  garageId:      number;
+  apartmentId:   number;
+  requestedById: number;
+  visitorName:   string | null;
+  licensePlate:  string;
+  startTime:     string;
+  endTime:       string;
+  status:        "activa" | "cancelada" | "vencida";
+  createdAt:     string;
+  garage: {
+    id:       number;
+    number:   string;
+    location: string | null;
+  };
+  apartment: {
+    id:    number;
+    unit:  string;
+    floor: string;
+  };
+  requestedBy: {
+    id:   number;
+    name: string;
+  };
+}
+
+export const adminGetAllVisitorParkings = async (
+  token: string
+): Promise<AdminVisitorParking[]> => {
+  const res = await fetch(`${API_URL}/visitor-parking/admin/all`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Error al obtener reservas de visitantes");
+  return res.json();
+};

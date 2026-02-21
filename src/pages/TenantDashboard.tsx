@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { createReservation } from "../api_calls/post_reservation";
-import { Car, MapPin, CheckCircle } from "lucide-react";
+import { Car, MapPin, ChevronRight, ParkingSquare } from "lucide-react";
 
 import { getReservationsByAmenity } from "../api_calls/get_amenity_reservations";
 import { updateUserName } from "../api_calls/update_user_name";
@@ -56,7 +56,7 @@ function TenantDashboard() {
     const [showSuccessToast, setShowSuccessToast] = useState(false);
     const [showPasswordChangeToast, setShowPasswordChangeToast] = useState(false);
     const [newName, setNewName] = useState("");
-    const [activeTab, setActiveTab] = useState<"dashboard" | "reclamos">("dashboard");
+    const [activeTab, setActiveTab] = useState<"dashboard" | "reclamos" | "cocheras">("dashboard");
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [isReserving, setIsReserving] = useState(false);
     const [isCancelling, setIsCancelling] = useState<number | null>(null);
@@ -519,6 +519,7 @@ function TenantDashboard() {
                     onLogout={handleLogout}
                     onClaimsClick={() => setActiveTab("reclamos")}
                     onDashboardClick={() => setActiveTab("dashboard")}
+                    onCocherasClick={() => setActiveTab("cocheras")}
                     activeTab={activeTab}
                 userNotifications={userNotifications}
                 userUnreadCount={userUnreadCount}
@@ -538,6 +539,105 @@ function TenantDashboard() {
             {/* Mostrar ClaimsPage si activeTab es 'reclamos', sino mostrar el dashboard original */}
             {activeTab === "reclamos" ? (
                 <ClaimsPage />
+            ) : activeTab === "cocheras" ? (
+                <div className="space-y-6 mt-2">
+
+                    {/* ─ Header banner ─────────────────────────────────────── */}
+                    <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-3xl p-6 flex items-center gap-5">
+                        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                            <ParkingSquare className="w-7 h-7 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Cocheras &amp; Vehículos</h2>
+                            <p className="text-slate-300 text-sm mt-0.5">
+                                {myGarages.length > 0
+                                    ? `Tenés ${myGarages.length} cochera${myGarages.length !== 1 ? 's' : ''} asignada${myGarages.length !== 1 ? 's' : ''} a tu unidad`
+                                    : 'Gestioná tus cocheras, vehículos y visitas'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* ─ Mis Cocheras ─────────────────────────────────────── */}
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
+                                <MapPin className="w-4 h-4 text-slate-600" />
+                            </div>
+                            <h3 className="font-bold text-gray-800">Mis Cocheras</h3>
+                        </div>
+                        {myGarages.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                                <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-3">
+                                    <ParkingSquare className="w-6 h-6 text-gray-400" />
+                                </div>
+                                <p className="text-gray-500 font-medium text-sm">Sin cocheras asignadas</p>
+                                <p className="text-gray-400 text-xs mt-1">Comunicate con el administrador para asignar una.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {myGarages.map(g => (
+                                    <div key={g.id} className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3 border border-gray-100">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                            g.type === 'fija' ? 'bg-blue-100'
+                                            : g.type === 'cortesia' ? 'bg-purple-100'
+                                            : 'bg-amber-100'
+                                        }`}>
+                                            <ParkingSquare className={`w-4 h-4 ${
+                                                g.type === 'fija' ? 'text-blue-600'
+                                                : g.type === 'cortesia' ? 'text-purple-600'
+                                                : 'text-amber-600'
+                                            }`} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-gray-800 text-sm">{g.number}</p>
+                                            {g.location && <p className="text-gray-400 text-xs truncate">{g.location}</p>}
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${
+                                            g.type === 'fija' ? 'bg-blue-100 text-blue-700'
+                                            : g.type === 'cortesia' ? 'bg-purple-100 text-purple-700'
+                                            : 'bg-amber-100 text-amber-700'
+                                        }`}>
+                                            {g.type === 'fija' ? 'Fija' : g.type === 'cortesia' ? 'Cortesía' : 'Visitante'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ─ Acciones ─────────────────────────────────────────── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Mis Vehículos */}
+                        <button
+                            className="group text-left bg-white rounded-3xl border border-gray-100 shadow-sm p-6 hover:shadow-md hover:border-slate-200 transition-all cursor-pointer"
+                            onClick={() => setShowMyVehicles(true)}
+                        >
+                            <div className="w-12 h-12 bg-slate-100 group-hover:bg-slate-200 rounded-2xl flex items-center justify-center mb-4 transition-colors">
+                                <Car className="w-5 h-5 text-slate-600" />
+                            </div>
+                            <h4 className="font-bold text-gray-800 mb-1">Mis Vehículos</h4>
+                            <p className="text-gray-500 text-sm mb-4">Registrá y gestioná los autos de tu unidad.</p>
+                            <span className="inline-flex items-center gap-1 text-slate-600 text-sm font-semibold group-hover:gap-2 transition-all">
+                                Gestionar <ChevronRight className="w-4 h-4" />
+                            </span>
+                        </button>
+
+                        {/* Cochera Visitante */}
+                        <button
+                            className="group text-left bg-white rounded-3xl border border-amber-100 shadow-sm p-6 hover:shadow-md hover:border-amber-300 transition-all cursor-pointer"
+                            onClick={() => setShowVisitorParking(true)}
+                        >
+                            <div className="w-12 h-12 bg-amber-100 group-hover:bg-amber-200 rounded-2xl flex items-center justify-center mb-4 transition-colors">
+                                <Car className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <h4 className="font-bold text-gray-800 mb-1">Cochera Visitante</h4>
+                            <p className="text-gray-500 text-sm mb-4">Reservá una cochera temporaria para tus visitas (máx. 48 h).</p>
+                            <span className="inline-flex items-center gap-1 text-amber-600 text-sm font-semibold group-hover:gap-2 transition-all">
+                                Reservar <ChevronRight className="w-4 h-4" />
+                            </span>
+                        </button>
+                    </div>
+                </div>
             ) : (
                 <>
                     {/* Layout de selección - Amenities a la izquierda, Horario a la derecha */}
@@ -595,70 +695,6 @@ function TenantDashboard() {
                         hidingId={isHiding}
                     />
 
-                    {/* Sección Mis Cocheras & Vehículos */}
-                    <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {/* Mis Cocheras (read-only) */}
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
-                                    <MapPin className="w-4 h-4 text-slate-600" />
-                                </div>
-                                <h3 className="font-bold text-gray-800">Mis Cocheras</h3>
-                            </div>
-                            {myGarages.length === 0 ? (
-                                <p className="text-gray-400 text-sm">No tenés cocheras asignadas a tu unidad.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {myGarages.map(g => (
-                                        <div key={g.id} className="flex items-center gap-2 text-sm">
-                                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                            <span className="font-semibold text-gray-700">{g.number}</span>
-                                            {g.location && <span className="text-gray-400">· {g.location}</span>}
-                                            <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                g.type === 'fija' ? 'bg-blue-100 text-blue-700'
-                                                : g.type === 'cortesia' ? 'bg-purple-100 text-purple-700'
-                                                : 'bg-amber-100 text-amber-700'
-                                            }`}>
-                                                {g.type === 'fija' ? 'Fija' : g.type === 'cortesia' ? 'Cortesía' : 'Visitante'}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Mis Vehículos */}
-                        <div
-                            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all"
-                            onClick={() => setShowMyVehicles(true)}
-                        >
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
-                                    <Car className="w-4 h-4 text-slate-600" />
-                                </div>
-                                <h3 className="font-bold text-gray-800">Mis Vehículos</h3>
-                            </div>
-                            <p className="text-gray-500 text-sm mb-3">Registrá y gestioná tus vehículos.</p>
-                            <span className="text-slate-600 text-sm font-medium hover:underline">Ver mis vehículos →</span>
-                        </div>
-                    </div>
-
-                    {/* Cochera Visitante */}
-                    <div
-                        className="mt-4 bg-white rounded-2xl border border-amber-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all"
-                        onClick={() => setShowVisitorParking(true)}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center">
-                                <Car className="w-4 h-4 text-amber-600" />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="font-bold text-gray-800">Cochera Visitante</h3>
-                                <p className="text-gray-500 text-sm">Reservá una cochera temporaria para tus visitas (máx. 48 h).</p>
-                            </div>
-                            <span className="text-amber-600 text-sm font-medium">Gestionar →</span>
-                        </div>
-                    </div>
                 </>
             )}
 
