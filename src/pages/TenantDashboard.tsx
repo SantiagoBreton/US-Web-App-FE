@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { createReservation } from "../api_calls/post_reservation";
-import { Car, MapPin, ChevronRight, ParkingSquare } from "lucide-react";
+import { Car, MapPin, ChevronRight, ParkingSquare, ClipboardList } from "lucide-react";
 
 import { getReservationsByAmenity } from "../api_calls/get_amenity_reservations";
 import { updateUserName } from "../api_calls/update_user_name";
@@ -33,6 +33,7 @@ import { GamificationProvider } from "../contexts/GamificationContext";
 import WelcomeSection from "../components/WelcomeSection";
 import MyVehiclesModal from "../components/MyVehiclesModal";
 import VisitorParkingModal from "../components/VisitorParkingModal";
+import GarageRequestModal from "../components/GarageRequestModal";
 import { getMyGarages, type MyGarage } from "../api_calls/garages";
 import type { UserData, ReservationData, Reservation, Amenity } from "../types";
 
@@ -75,6 +76,7 @@ function TenantDashboard() {
     const [reservationErrorMessage, setReservationErrorMessage] = useState<string | null>(null);
     const [showMyVehicles,       setShowMyVehicles]       = useState(false);
     const [showVisitorParking,    setShowVisitorParking]    = useState(false);
+    const [showGarageRequest,     setShowGarageRequest]     = useState(false);
     const [myGarages,             setMyGarages]             = useState<MyGarage[]>([]);
 
     const { toasts, removeToast, addToast } = useNotificationToasts();
@@ -591,8 +593,16 @@ function TenantDashboard() {
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-gray-800 text-sm">{g.number}</p>
                                             {g.location && <p className="text-gray-400 text-xs truncate">{g.location}</p>}
+                                            {g.vehicles.length > 0 ? (
+                                                <p className="text-xs font-mono font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
+                                                    <Car className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                                    {g.vehicles.map(v => v.licensePlate).join(', ')}
+                                                </p>
+                                            ) : (
+                                                <p className="text-xs text-gray-400 mt-0.5">Sin auto asignado</p>
+                                            )}
                                         </div>
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 self-start ${
                                             g.type === 'fija' ? 'bg-blue-100 text-blue-700'
                                             : g.type === 'cortesia' ? 'bg-purple-100 text-purple-700'
                                             : 'bg-amber-100 text-amber-700'
@@ -636,7 +646,20 @@ function TenantDashboard() {
                                 Reservar <ChevronRight className="w-4 h-4" />
                             </span>
                         </button>
-                    </div>
+                        {/* Solicitar Cochera */}
+                        <button
+                            className="group text-left bg-white rounded-3xl border border-blue-100 shadow-sm p-6 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer sm:col-span-2"
+                            onClick={() => setShowGarageRequest(true)}
+                        >
+                            <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-2xl flex items-center justify-center mb-4 transition-colors">
+                                <ClipboardList className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <h4 className="font-bold text-gray-800 mb-1">Solicitar Cochera</h4>
+                            <p className="text-gray-500 text-sm mb-4">Pedí una cochera nueva o solicitá cambiar la tuya a una disponible.</p>
+                            <span className="inline-flex items-center gap-1 text-blue-600 text-sm font-semibold group-hover:gap-2 transition-all">
+                                Solicitar <ChevronRight className="w-4 h-4" />
+                            </span>
+                        </button>                    </div>
                 </div>
             ) : (
                 <>
@@ -822,6 +845,15 @@ function TenantDashboard() {
                     isOpen={showVisitorParking}
                     onClose={() => setShowVisitorParking(false)}
                     token={token}
+                />
+            )}
+
+            {token && (
+                <GarageRequestModal
+                    isOpen={showGarageRequest}
+                    onClose={() => setShowGarageRequest(false)}
+                    token={token}
+                    myGarages={myGarages}
                 />
             )}
 

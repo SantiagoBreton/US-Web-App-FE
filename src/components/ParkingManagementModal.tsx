@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Car, Search, Plus, Edit3, Trash2, X, MapPin, Tag,
   CheckCircle, AlertCircle, Building, Link2, Unlink,
-  Truck, User, Filter, Clock,
+  Truck, User, Filter, Clock, ClipboardList, XCircle,
 } from "lucide-react";
 import { useToast } from "./Toast";
 import {
@@ -14,6 +14,7 @@ import {
 import { getAdminVehicles, type AdminVehicle, type AdminVehicleFilters } from "../api_calls/vehicles";
 import { getAdminApartments, type AdminApartment } from "../api_calls/admin";
 import { adminGetAllVisitorParkings, type AdminVisitorParking } from "../api_calls/visitorParking";
+import { adminGetAllGarageRequests, adminResolveGarageRequest, type AdminGarageRequest } from "../api_calls/garageRequests";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ const EMPTY_GARAGE_FORM = {
 
 type FilterType   = "all" | GarageType;
 type FilterStatus = "all" | GarageStatus;
-type Tab = "cocheras" | "asignaciones" | "vehiculos" | "visitantes";
+type Tab = "cocheras" | "asignaciones" | "vehiculos" | "visitantes" | "solicitudes";
 
 // ─── props ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,12 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
   const [visitorParkingLoading,  setVisitorParkingLoading]  = useState(false);
   const [visitorSearch,          setVisitorSearch]          = useState("");
 
+  // ── garage requests state ──────────────────────────────────────────────────
+  const [garageRequests,    setGarageRequests]    = useState<AdminGarageRequest[]>([]);
+  const [reqFilter,         setReqFilter]         = useState<string>("pendiente");
+  const [resolvingReqId,    setResolvingReqId]    = useState<number | null>(null);
+  const [noteMap,           setNoteMap]           = useState<Record<number, string>>({});
+
   // ── load all ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen && token) loadAll();
@@ -114,16 +121,18 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
     setLoading(true);
     setVisitorParkingLoading(true);
     try {
-      const [g, a, v, vp] = await Promise.all([
+      const [g, a, v, vp, gr] = await Promise.all([
         getAdminGarages(token),
         getAdminApartments(token),
         getAdminVehicles(token),
         adminGetAllVisitorParkings(token),
+        adminGetAllGarageRequests(token),
       ]);
       setGarages(Array.isArray(g) ? g : []);
       setApartments(Array.isArray(a) ? a : []);
       setVehicles(Array.isArray(v) ? v : []);
       setVisitorParkings(Array.isArray(vp) ? vp : []);
+      setGarageRequests(Array.isArray(gr) ? gr : []);
     } catch {
       showToast("Error al cargar datos", "error");
     } finally {
@@ -315,10 +324,12 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
   };
 
   const tabs = [
-    { key: "cocheras"     as Tab, label: "Cocheras",     icon: Car   },
-    { key: "asignaciones" as Tab, label: "Asignaciones", icon: Link2 },
-    { key: "vehiculos"    as Tab, label: "Vehículos",    icon: Truck },
-    { key: "visitantes"   as Tab, label: "Visitantes",   icon: Clock },
+    { key: "cocheras"     as Tab, label: "Cocheras",     icon: Car           },
+    { key: "asignaciones" as Tab, label: "Asignaciones", icon: Link2         },
+    { key: "vehiculos"    as Tab, label: "Vehículos",    icon: Truck         },
+    { key: "visitantes"   as Tab, label: "Visitantes",   icon: Clock         },
+    { key: "solicitudes"  as Tab, label: "Solicitudes",  icon: ClipboardList,
+      badge: garageRequests.filter(r => r.status === "pendiente").length || undefined },
   ];
 
   return (
@@ -370,6 +381,11 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                 >
                   <tab.icon className="w-4 h-4" />
                   {tab.label}
+                  {(tab as any).badge ? (
+                    <span className="ml-0.5 min-w-[18px] h-[18px] px-1 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {(tab as any).badge}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </nav>
@@ -627,6 +643,31 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
             />
           )}
 
+          {/* ── Tab: Solicitudes ────────────────────────────────────────────── */}
+          {activeTab === "solicitudes" && (
+            <SolicitudesTab
+              garageRequests={garageRequests}
+              reqFilter={reqFilter}
+              setReqFilter={setReqFilter}
+              resolvingReqId={resolvingReqId}
+              noteMap={noteMap}
+              setNoteMap={setNoteMap}
+              onResolve={async (id, status, note) => {
+                setResolvingReqId(id);
+                try {
+                  const updated = await adminResolveGarageRequest(token, id, status, note);
+                  setGarageRequests(prev => prev.map(r => r.id === id ? updated : r));
+                  showToast(status === "aprobada" ? "Solicitud aprobada" : "Solicitud rechazada", status === "aprobada" ? "success" : "error");
+                  if (status === "aprobada") await loadAll();
+                } catch (err) {
+                  showToast(err instanceof Error ? err.message : "Error al resolver", "error");
+                } finally {
+                  setResolvingReqId(null);
+                }
+              }}
+            />
+          )}
+
           {/* ── Tab: Vehículos ──────────────────────────────────────────────── */}
           {activeTab === "vehiculos" && (
             <div className="p-6 space-y-4">
@@ -780,6 +821,153 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// ─── Solicitudes tab ──────────────────────────────────────────────────────────
+
+interface SolicitudesTabProps {
+  garageRequests: AdminGarageRequest[];
+  reqFilter:      string;
+  setReqFilter:   (v: string) => void;
+  resolvingReqId: number | null;
+  noteMap:        Record<number, string>;
+  setNoteMap:     (m: Record<number, string>) => void;
+  onResolve:      (id: number, status: "aprobada" | "rechazada", note?: string) => Promise<void>;
+}
+
+function SolicitudesTab({
+  garageRequests, reqFilter, setReqFilter,
+  resolvingReqId, noteMap, setNoteMap, onResolve,
+}: SolicitudesTabProps) {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
+
+  const filtered = reqFilter === "all"
+    ? garageRequests
+    : garageRequests.filter(r => r.status === reqFilter);
+
+  const pendingCount = garageRequests.filter(r => r.status === "pendiente").length;
+
+  const StatusBadge = ({ status }: { status: AdminGarageRequest["status"] }) => {
+    const map: Record<string, string> = {
+      pendiente: "bg-amber-100 text-amber-700",
+      aprobada:  "bg-green-100 text-green-700",
+      rechazada: "bg-red-100 text-red-700",
+    };
+    const labels: Record<string, string> = { pendiente: "Pendiente", aprobada: "Aprobada", rechazada: "Rechazada" };
+    return <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${map[status]}`}>{labels[status]}</span>;
+  };
+
+  return (
+    <div className="p-6 space-y-5">
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {[
+          { value: "pendiente", label: `Pendientes${pendingCount > 0 ? ` (${pendingCount})` : ""}` },
+          { value: "aprobada",  label: "Aprobadas" },
+          { value: "rechazada", label: "Rechazadas" },
+          { value: "all",       label: "Todas" },
+        ].map(f => (
+          <button
+            key={f.value}
+            onClick={() => setReqFilter(f.value)}
+            className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+              reqFilter === f.value
+                ? "bg-slate-800 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">No hay solicitudes{reqFilter !== "all" ? ` ${reqFilter}s` : ""}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map(req => (
+            <div
+              key={req.id}
+              className={`rounded-2xl border p-5 space-y-3 ${
+                req.status === "pendiente" ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-gray-800 text-sm">
+                      {req.type === "nueva" ? "Solicitud de cochera nueva" : "Solicitud de cambio de cochera"}
+                    </span>
+                    <StatusBadge status={req.status} />
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <User className="w-3 h-3" />
+                    <span className="font-medium text-gray-700">{req.user.name}</span>
+                    <span>·</span>
+                    {req.user.apartment
+                      ? <span>Unidad {req.user.apartment.unit} · P{req.user.apartment.floor}</span>
+                      : <span className="text-gray-400">Sin unidad asignada</span>
+                    }
+                    <span>·</span>
+                    <span>{fmt(req.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-600 space-y-1 bg-white rounded-xl p-3 border border-gray-100">
+                {req.currentGarage && (
+                  <p><span className="text-gray-400">Cochera actual:</span>{" "}<span className="font-medium text-gray-800">{req.currentGarage.number}{req.currentGarage.location ? ` · ${req.currentGarage.location}` : ""}</span></p>
+                )}
+                <p>
+                  <span className="text-gray-400">Cochera preferida:</span>{" "}
+                  {req.requestedGarage
+                    ? <span className="font-medium text-gray-800">{req.requestedGarage.number}{req.requestedGarage.location ? ` · ${req.requestedGarage.location}` : ""}</span>
+                    : <span className="text-gray-400 italic">Sin preferencia</span>
+                  }
+                </p>
+                {req.reason && <p><span className="text-gray-400">Motivo:</span> <span className="italic">"{req.reason}"</span></p>}
+                {req.adminNote && <p><span className="text-gray-400">Nota del admin:</span> <span className="font-medium">{req.adminNote}</span></p>}
+              </div>
+
+              {req.status === "pendiente" && (
+                <div className="space-y-2">
+                  <textarea
+                    rows={2}
+                    placeholder="Nota para el vecino (opcional)"
+                    value={noteMap[req.id] ?? ""}
+                    onChange={e => setNoteMap({ ...noteMap, [req.id]: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      disabled={resolvingReqId === req.id}
+                      onClick={() => onResolve(req.id, "aprobada", noteMap[req.id])}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      {resolvingReqId === req.id ? "Procesando..." : "Aprobar"}
+                    </button>
+                    <button
+                      disabled={resolvingReqId === req.id}
+                      onClick={() => onResolve(req.id, "rechazada", noteMap[req.id])}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 text-white rounded-xl text-xs font-semibold hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
