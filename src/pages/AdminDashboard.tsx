@@ -8,7 +8,8 @@ import {
     Home,
     Clock,
     BarChart3,
-    Star
+    Star,
+    Car
 } from "lucide-react";
 
 import Header from "../components/Header";
@@ -23,6 +24,7 @@ import AmenityManagement from "../components/AmenityManagement";
 import ClaimsManagement from "../components/ClaimsManagement";
 import AnalyticsReports from "../components/AnalyticsReports";
 import AdminRatingsView from "../components/AdminRatingsView";
+import ParkingManagementModal from "../components/ParkingManagementModal";
 import { LoadingOverlay } from "../components/LoadingSpinner";
 import LogoutSuccessToast from "../components/LogoutSuccessToast";
 import PasswordChangeSuccessToast from "../components/PasswordChangeSuccessToast";
@@ -55,6 +57,7 @@ function AdminDashboard() {
     const [showClaimsManagement, setShowClaimsManagement] = useState(false);
     const [showAnalyticsReports, setShowAnalyticsReports] = useState(false);
     const [showRatingsView, setShowRatingsView] = useState(false);
+    const [showParkingManagement, setShowParkingManagement] = useState(false);
     const [showNotificationsModal, setShowNotificationsModal] = useState(false);
     const [showSuccessToast, setShowSuccessToast] = useState(false);
     const [showPasswordChangeToast, setShowPasswordChangeToast] = useState(false);
@@ -215,6 +218,7 @@ function AdminDashboard() {
                     onLogout={handleLogout}
                     showClaimsTab={false}
                     showAmenitiesTab={false}
+                    showCocherasTab={false}
                     showGamification={false}
                 showNotifications={true}
                 notifications={notifications}
@@ -478,6 +482,28 @@ function AdminDashboard() {
                             • Filtros avanzados
                         </div>
                     </motion.div>
+
+                    <motion.div 
+                        className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 cursor-pointer hover:shadow-2xl transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowParkingManagement(true)}
+                    >
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-slate-800 rounded-xl flex items-center justify-center">
+                                <Car className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">Cocheras & Vehículos</h3>
+                        </div>
+                        <p className="text-gray-600 mb-4">
+                            Gestioná cocheras, asignaciones y vehículos del edificio
+                        </p>
+                        <div className="text-sm text-gray-500">
+                            • Crear/editar cocheras<br />
+                            • Asignar a unidades<br />
+                            • Ver vehículos registrados
+                        </div>
+                    </motion.div>
                 </div>
             </div>
 
@@ -599,6 +625,14 @@ function AdminDashboard() {
                 isOpen={showRatingsView}
                 onClose={() => setShowRatingsView(false)}
             />
+
+            {token && (
+                <ParkingManagementModal
+                    isOpen={showParkingManagement}
+                    onClose={() => setShowParkingManagement(false)}
+                    token={token}
+                />
+            )}
             </div>
         </>
     );
