@@ -61,6 +61,9 @@ export default function GarageRequestModal({ isOpen, onClose, token, myGarages }
     if (type === "cambio" && !currentGarageId) {
       return showToast("Seleccioná la cochera que querés cambiar", "error");
     }
+    if (!requestedGarageId) {
+      return showToast("Tenés que seleccionar una cochera", "error");
+    }
     setSubmitting(true);
     try {
       await createGarageRequest(token, {
@@ -211,16 +214,17 @@ export default function GarageRequestModal({ isOpen, onClose, token, myGarages }
                 {/* Requested garage */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                    Cochera preferida <span className="text-gray-400 font-normal">(opcional)</span>
+                    Cochera solicitada <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <ParkingSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <select
+                      required
                       value={requestedGarageId}
                       onChange={e => setRequestedGarageId(e.target.value)}
                       className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 appearance-none cursor-pointer bg-white"
                     >
-                      <option value="">Sin preferencia (cualquier disponible)</option>
+                      <option value="">Seleccioná una cochera</option>
                       {availableGarages.map(g => (
                         <option key={g.id} value={g.id}>
                           {g.number}{g.location ? ` · ${g.location}` : ""} ({g.type})
@@ -300,9 +304,7 @@ export default function GarageRequestModal({ isOpen, onClose, token, myGarages }
                         )}
                         {r.requestedGarage ? (
                           <p>Cochera solicitada: <span className="font-medium text-gray-700">{r.requestedGarage.number}{r.requestedGarage.location ? ` · ${r.requestedGarage.location}` : ""}</span></p>
-                        ) : (
-                          <p>Cochera preferida: <span className="text-gray-400">Sin preferencia</span></p>
-                        )}
+                        ) : null}
                         {r.reason && <p>Motivo: <span className="text-gray-600 italic">"{r.reason}"</span></p>}
                         {r.adminNote && (
                           <p className="mt-1 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-gray-600">

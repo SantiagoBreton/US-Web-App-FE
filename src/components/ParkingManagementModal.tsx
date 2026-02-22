@@ -943,10 +943,10 @@ function SolicitudesTab({
                   <p><span className="text-gray-400">Cochera actual:</span>{" "}<span className="font-medium text-gray-800">{req.currentGarage.number}{req.currentGarage.location ? ` · ${req.currentGarage.location}` : ""}</span></p>
                 )}
                 <p>
-                  <span className="text-gray-400">Cochera preferida:</span>{" "}
+                  <span className="text-gray-400">Cochera solicitada:</span>{" "}
                   {req.requestedGarage
                     ? <span className="font-medium text-gray-800">{req.requestedGarage.number}{req.requestedGarage.location ? ` · ${req.requestedGarage.location}` : ""}</span>
-                    : <span className="text-gray-400 italic">Sin preferencia</span>
+                    : <span className="text-gray-400 italic">—</span>
                   }
                 </p>
                 {req.reason && <p><span className="text-gray-400">Motivo:</span> <span className="italic">"{req.reason}"</span></p>}
