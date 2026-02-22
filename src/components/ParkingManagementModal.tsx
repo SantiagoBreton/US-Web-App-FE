@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Car, Search, Plus, Edit3, Trash2, X, MapPin, Tag,
   CheckCircle, AlertCircle, Building, Link2, Unlink,
-  Truck, User, Filter, Clock, ClipboardList, XCircle,
+  Truck, User, Filter, Clock, ClipboardList, XCircle, Briefcase,
 } from "lucide-react";
 import { useToast } from "./Toast";
 import {
@@ -15,6 +15,10 @@ import { getAdminVehicles, type AdminVehicle, type AdminVehicleFilters } from ".
 import { getAdminApartments, type AdminApartment } from "../api_calls/admin";
 import { adminGetAllVisitorParkings, type AdminVisitorParking } from "../api_calls/visitorParking";
 import { adminGetAllGarageRequests, adminResolveGarageRequest, type AdminGarageRequest } from "../api_calls/garageRequests";
+import {
+  getCortesiaReservations, createCortesiaReservation, cancelCortesiaReservation,
+  type CortesiaReservation,
+} from "../api_calls/cortesiaReservations";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,7 +61,7 @@ const EMPTY_GARAGE_FORM = {
 
 type FilterType   = "all" | GarageType;
 type FilterStatus = "all" | GarageStatus;
-type Tab = "cocheras" | "asignaciones" | "vehiculos" | "visitantes" | "solicitudes";
+type Tab = "cocheras" | "asignaciones" | "vehiculos" | "visitantes" | "solicitudes" | "cortesia";
 
 // ─── props ────────────────────────────────────────────────────────────────────
 
@@ -112,6 +116,10 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
   const [resolvingReqId,    setResolvingReqId]    = useState<number | null>(null);
   const [noteMap,           setNoteMap]           = useState<Record<number, string>>({});
 
+  // ── cortesía reservations state ───────────────────────────────────────────
+  const [cortesiaReservations,  setCortesiaReservations]  = useState<CortesiaReservation[]>([]);
+  const [cortesiaLoading,       setCortesiaLoading]       = useState(false);
+
   // ── load all ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen && token) loadAll();
@@ -120,24 +128,28 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
   const loadAll = async () => {
     setLoading(true);
     setVisitorParkingLoading(true);
+    setCortesiaLoading(true);
     try {
-      const [g, a, v, vp, gr] = await Promise.all([
+      const [g, a, v, vp, gr, cr] = await Promise.all([
         getAdminGarages(token),
         getAdminApartments(token),
         getAdminVehicles(token),
         adminGetAllVisitorParkings(token),
         adminGetAllGarageRequests(token),
+        getCortesiaReservations(token),
       ]);
       setGarages(Array.isArray(g) ? g : []);
       setApartments(Array.isArray(a) ? a : []);
       setVehicles(Array.isArray(v) ? v : []);
       setVisitorParkings(Array.isArray(vp) ? vp : []);
       setGarageRequests(Array.isArray(gr) ? gr : []);
+      setCortesiaReservations(Array.isArray(cr) ? cr : []);
     } catch {
       showToast("Error al cargar datos", "error");
     } finally {
       setLoading(false);
       setVisitorParkingLoading(false);
+      setCortesiaLoading(false);
     }
   };
 
@@ -328,6 +340,8 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
     { key: "asignaciones" as Tab, label: "Asignaciones", icon: Link2         },
     { key: "vehiculos"    as Tab, label: "Vehículos",    icon: Truck         },
     { key: "visitantes"   as Tab, label: "Visitantes",   icon: Clock         },
+    { key: "cortesia"     as Tab, label: "Cortesía",     icon: Briefcase,
+      badge: cortesiaReservations.filter(r => r.status === "activa").length || undefined },
     { key: "solicitudes"  as Tab, label: "Solicitudes",  icon: ClipboardList,
       badge: garageRequests.filter(r => r.status === "pendiente").length || undefined },
   ];
@@ -478,8 +492,19 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                             new Date(vp.startTime) <= _now &&
                             new Date(vp.endTime)   >= _now
                         );
+                        const activeCortesia = cortesiaReservations.find(
+                          cr =>
+                            cr.garageId === g.id &&
+                            cr.status === "activa" &&
+                            new Date(cr.startTime) <= _now &&
+                            new Date(cr.endTime)   >= _now
+                        );
                         return (
-                        <tr key={g.id} className={`transition-colors ${activeVisitor ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"}`}>
+                        <tr key={g.id} className={`transition-colors ${
+                          activeVisitor  ? "bg-amber-50 hover:bg-amber-100" :
+                          activeCortesia ? "bg-purple-50 hover:bg-purple-100" :
+                          "hover:bg-gray-50"
+                        }`}>
                           <td className="px-4 py-3 font-semibold text-gray-800">{g.number}</td>
                           <td className="px-4 py-3 text-gray-600">
                             {g.location
@@ -504,6 +529,13 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                                   Visitante en reserva
                                 </span>
                                 <span className="text-amber-600 text-xs font-medium">{activeVisitor.licensePlate}</span>
+                              </span>
+                            ) : activeCortesia ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 border border-purple-300 rounded-full text-xs font-semibold">
+                                  Cortesía activa
+                                </span>
+                                <span className="text-purple-600 text-xs font-medium truncate max-w-[120px]">{activeCortesia.personName}</span>
                               </span>
                             ) : g.apartment ? (
                               <span className="flex items-center gap-1 text-gray-700"><Building className="w-3.5 h-3.5 text-gray-400" />Unidad {g.apartment.unit} · Piso {g.apartment.floor}</span>
@@ -659,6 +691,22 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
               loading={visitorParkingLoading}
               visitorSearch={visitorSearch}
               setVisitorSearch={setVisitorSearch}
+            />
+          )}
+
+          {/* ── Tab: Cortesía ────────────────────────────────────────────────── */}
+          {activeTab === "cortesia" && (
+            <CortesiaTab
+              reservations={cortesiaReservations}
+              loading={cortesiaLoading}
+              garages={garages.filter(g => g.type === "cortesia" && g.status === "activa")}
+              token={token}
+              onCreated={(r) => setCortesiaReservations(prev => [r, ...prev])}
+              onCancelled={(id) =>
+                setCortesiaReservations(prev =>
+                  prev.map(r => r.id === id ? { ...r, status: "cancelada" as const } : r)
+                )
+              }
             />
           )}
 
@@ -984,6 +1032,392 @@ function SolicitudesTab({
               )}
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Cortesía tab ─────────────────────────────────────────────────────────────
+
+const MAX_CORTESIA_HOURS = 8;
+
+const toLocalInputValue = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+interface CortesiaTabProps {
+  reservations: CortesiaReservation[];
+  loading:      boolean;
+  garages:      AdminGarage[];
+  token:        string;
+  onCreated:    (r: CortesiaReservation) => void;
+  onCancelled:  (id: number) => void;
+}
+
+function CortesiaTab({ reservations, loading, garages, token, onCreated, onCancelled }: CortesiaTabProps) {
+  const { showToast } = useToast();
+  const now = new Date();
+
+  const [showForm,     setShowForm]     = useState(false);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [cancelling,   setCancelling]   = useState<number | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("activa");
+
+  // form
+  const defaultStart = toLocalInputValue(new Date(now.getTime() + 5 * 60 * 1000));
+  const defaultEnd   = toLocalInputValue(new Date(now.getTime() + 2 * 60 * 60 * 1000));
+  const [garageId,     setGarageId]     = useState("");
+  const [personName,   setPersonName]   = useState("");
+  const [licensePlate, setLicensePlate] = useState("");
+  const [reason,       setReason]       = useState("");
+  const [startTime,    setStartTime]    = useState(defaultStart);
+  const [endTime,      setEndTime]      = useState(defaultEnd);
+
+  const resetForm = () => {
+    const s = toLocalInputValue(new Date(Date.now() + 5 * 60 * 1000));
+    const e = toLocalInputValue(new Date(Date.now() + 2 * 60 * 60 * 1000));
+    setGarageId(""); setPersonName(""); setLicensePlate(""); setReason("");
+    setStartTime(s); setEndTime(e);
+  };
+
+  const diffHours = startTime && endTime
+    ? (new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000 * 60 * 60)
+    : null;
+
+  // Cocheras libres en el rango horario seleccionado
+  const availableGarages = garages.filter(g => {
+    if (!startTime || !endTime) return true;
+    const selStart = new Date(startTime);
+    const selEnd   = new Date(endTime);
+    return !reservations.some(
+      r =>
+        r.garageId === g.id &&
+        r.status === "activa" &&
+        new Date(r.startTime) < selEnd &&
+        new Date(r.endTime)   > selStart
+    );
+  });
+  const occupiedGarages = garages.filter(g => !availableGarages.includes(g));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!garageId || !personName.trim() || !reason.trim() || !startTime || !endTime) {
+      return showToast("Completá todos los campos requeridos", "error");
+    }
+    if (diffHours !== null && diffHours <= 0) {
+      return showToast("La hora de fin debe ser posterior a la de inicio", "error");
+    }
+    if (diffHours !== null && diffHours > MAX_CORTESIA_HOURS) {
+      return showToast(`Máximo ${MAX_CORTESIA_HOURS} horas`, "error");
+    }
+    setSubmitting(true);
+    try {
+      const created = await createCortesiaReservation(token, {
+        garageId:     parseInt(garageId),
+        personName:   personName.trim(),
+        licensePlate: licensePlate.trim() || undefined,
+        reason:       reason.trim(),
+        startTime:    new Date(startTime).toISOString(),
+        endTime:      new Date(endTime).toISOString(),
+      });
+      onCreated(created);
+      showToast("Reserva de cortesía creada", "success");
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Error al crear reserva", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCancel = async (id: number) => {
+    setCancelling(id);
+    try {
+      await cancelCortesiaReservation(token, id);
+      onCancelled(id);
+      showToast("Reserva cancelada", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Error al cancelar", "error");
+    } finally {
+      setCancelling(null);
+    }
+  };
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString("es-AR", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
+  const StatusBadge = ({ status }: { status: CortesiaReservation["status"] }) => {
+    const map = {
+      activa:    "bg-purple-100 text-purple-800",
+      cancelada: "bg-red-100 text-red-800",
+      vencida:   "bg-gray-100 text-gray-600",
+    };
+    const labels = { activa: "Activa", cancelada: "Cancelada", vencida: "Vencida" };
+    return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status]}`}>{labels[status]}</span>;
+  };
+
+  const isOccupiedNow = (r: CortesiaReservation) =>
+    r.status === "activa" && new Date(r.startTime) <= now && new Date(r.endTime) >= now;
+
+  const filtered = filterStatus === "all"
+    ? reservations
+    : reservations.filter(r => r.status === filterStatus);
+
+  const activeCount = reservations.filter(r => r.status === "activa").length;
+
+  return (
+    <div className="p-6 space-y-5">
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { value: "activa",    label: `Activas${activeCount > 0 ? ` (${activeCount})` : ""}` },
+            { value: "vencida",   label: "Vencidas" },
+            { value: "cancelada", label: "Canceladas" },
+            { value: "all",       label: "Todas" },
+          ].map(f => (
+            <button
+              key={f.value}
+              onClick={() => setFilterStatus(f.value)}
+              className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                filterStatus === f.value
+                  ? "bg-slate-800 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => { setShowForm(true); resetForm(); }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800 transition-colors cursor-pointer whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" />
+          Nueva reserva
+        </button>
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <motion.form
+          onSubmit={handleSubmit}
+          className="bg-purple-50 border border-purple-200 rounded-2xl p-5 space-y-4"
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+        >
+          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-purple-600" />
+            Nueva reserva de cortesía
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Garage */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Cochera <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={garageId}
+                onChange={e => setGarageId(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 cursor-pointer bg-white"
+                disabled={submitting}
+              >
+                <option value="">Seleccioná una cochera</option>
+                {availableGarages.map(g => (
+                  <option key={g.id} value={g.id}>
+                    {g.number}{g.location ? ` · ${g.location}` : ""}
+                  </option>
+                ))}
+                {occupiedGarages.length > 0 && (
+                  <optgroup label="Ocupadas en ese horario">
+                    {occupiedGarages.map(g => (
+                      <option key={g.id} value={g.id} disabled>
+                        {g.number}{g.location ? ` · ${g.location}` : ""} — ocupada
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+              {availableGarages.length === 0 && garages.length > 0 && (
+                <p className="text-xs text-amber-600 mt-1">Todas las cocheras de cortesía están ocupadas en ese horario</p>
+              )}
+              {garages.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">No hay cocheras de cortesía activas disponibles</p>
+              )}
+            </div>
+
+            {/* Person / company */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Persona / empresa <span className="text-red-500">*</span>
+              </label>
+              <input
+                required
+                value={personName}
+                onChange={e => setPersonName(e.target.value)}
+                placeholder="Ej: Plomero Juan García"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                disabled={submitting}
+              />
+            </div>
+
+            {/* License plate */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Patente <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <input
+                value={licensePlate}
+                onChange={e => setLicensePlate(e.target.value.toUpperCase())}
+                placeholder="Ej: AB123CD"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 font-mono"
+                disabled={submitting}
+              />
+            </div>
+
+            {/* Start time */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Inicio <span className="text-red-500">*</span>
+              </label>
+              <input
+                required
+                type="datetime-local"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                disabled={submitting}
+              />
+            </div>
+
+            {/* End time */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Fin <span className="text-red-500">*</span>
+                {diffHours !== null && diffHours > 0 && (
+                  <span className={`ml-2 font-normal ${diffHours > MAX_CORTESIA_HOURS ? "text-red-500" : "text-gray-400"}`}>
+                    ({Math.round(diffHours * 10) / 10}h / máx {MAX_CORTESIA_HOURS}h)
+                  </span>
+                )}
+              </label>
+              <input
+                required
+                type="datetime-local"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                disabled={submitting}
+              />
+            </div>
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Motivo <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              required
+              rows={2}
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Ej: Reunión de propietarios, proveedor de mantenimiento, visita técnica..."
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              disabled={submitting}
+              className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || garages.length === 0}
+              className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {submitting ? "Creando..." : "Crear reserva"}
+            </button>
+          </div>
+        </motion.form>
+      )}
+
+      {/* List */}
+      {loading ? (
+        <div className="text-center py-16 text-gray-400">Cargando reservas de cortesía...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">No hay reservas de cortesía{filterStatus !== "all" ? ` ${filterStatus}s` : ""}</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-gray-200">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                {["Cochera", "Persona / Empresa", "Patente", "Motivo", "Inicio", "Fin", "Estado", ""].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(r => (
+                <tr
+                  key={r.id}
+                  className={`transition-colors ${isOccupiedNow(r) ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-gray-50"}`}
+                >
+                  <td className="px-4 py-3 font-semibold text-gray-800">
+                    <span className="flex items-center gap-1">
+                      {isOccupiedNow(r) && <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse flex-shrink-0" />}
+                      {r.garage.number}
+                      {r.garage.location && <span className="text-gray-400 font-normal text-xs">· {r.garage.location}</span>}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="flex items-center gap-1 text-gray-700">
+                      <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      {r.personName}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {r.licensePlate
+                      ? <span className="font-mono font-semibold text-gray-800 bg-gray-100 px-2 py-1 rounded-lg">{r.licensePlate}</span>
+                      : <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-4 py-3 max-w-[220px]">
+                    <span className="text-gray-600 text-xs line-clamp-2" title={r.reason}>{r.reason}</span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{fmt(r.startTime)}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{fmt(r.endTime)}</td>
+                  <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                  <td className="px-4 py-3">
+                    {r.status === "activa" && (
+                      <button
+                        onClick={() => handleCancel(r.id)}
+                        disabled={cancelling === r.id}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                        title="Cancelar reserva"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
