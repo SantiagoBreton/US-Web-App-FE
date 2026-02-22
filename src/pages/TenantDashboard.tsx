@@ -573,7 +573,7 @@ function TenantDashboard() {
                                     <ParkingSquare className="w-6 h-6 text-gray-400" />
                                 </div>
                                 <p className="text-gray-500 font-medium text-sm">Sin cocheras asignadas</p>
-                                <p className="text-gray-400 text-xs mt-1">Comunicate con el administrador para asignar una.</p>
+                                <p className="text-gray-400 text-xs mt-1">Realiza una solicitud para asigarnte una.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

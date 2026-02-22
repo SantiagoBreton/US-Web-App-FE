@@ -1230,7 +1230,10 @@ function GarageFormModal({ title, form, setForm, apartments, processing, onSubmi
               <select
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer"
                 value={form.type}
-                onChange={e => set("type")(e.target.value)}
+                onChange={e => {
+                  const newType = e.target.value;
+                  setForm({ ...form, type: newType as GarageType, apartmentId: newType === "visitante" ? "" : form.apartmentId });
+                }}
                 disabled={processing}
               >
                 <option value="fija">Fija</option>
@@ -1251,20 +1254,22 @@ function GarageFormModal({ title, form, setForm, apartments, processing, onSubmi
               </select>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Unidad asignada</label>
-            <select
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer"
-              value={form.apartmentId}
-              onChange={e => set("apartmentId")(e.target.value)}
-              disabled={processing}
-            >
-              <option value="">Sin asignar</option>
-              {apartments.map(a => (
-                <option key={a.id} value={a.id}>Unidad {a.unit} · Piso {a.floor}</option>
-              ))}
-            </select>
-          </div>
+          {form.type !== "visitante" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Unidad asignada</label>
+              <select
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer"
+                value={form.apartmentId}
+                onChange={e => set("apartmentId")(e.target.value)}
+                disabled={processing}
+              >
+                <option value="">Sin asignar</option>
+                {apartments.map(a => (
+                  <option key={a.id} value={a.id}>Unidad {a.unit} · Piso {a.floor}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer">
               Cancelar
