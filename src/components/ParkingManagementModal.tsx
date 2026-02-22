@@ -1109,6 +1109,12 @@ function CortesiaTab({ reservations, loading, garages, token, onCreated, onCance
     if (diffHours !== null && diffHours <= 0) {
       return showToast("La hora de fin debe ser posterior a la de inicio", "error");
     }
+    if (startTime && new Date(startTime) < new Date()) {
+      return showToast("El horario de inicio no puede ser en el pasado", "error");
+    }
+    if (endTime && new Date(endTime) < new Date()) {
+      return showToast("El horario de fin no puede ser en el pasado", "error");
+    }
     if (diffHours !== null && diffHours > MAX_CORTESIA_HOURS) {
       return showToast(`Máximo ${MAX_CORTESIA_HOURS} horas`, "error");
     }
@@ -1291,6 +1297,7 @@ function CortesiaTab({ reservations, loading, garages, token, onCreated, onCance
                 required
                 type="datetime-local"
                 value={startTime}
+                min={toLocalInputValue(new Date())}
                 onChange={e => setStartTime(e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
                 disabled={submitting}
@@ -1311,6 +1318,7 @@ function CortesiaTab({ reservations, loading, garages, token, onCreated, onCance
                 required
                 type="datetime-local"
                 value={endTime}
+                min={startTime || toLocalInputValue(new Date())}
                 onChange={e => setEndTime(e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
                 disabled={submitting}
@@ -1666,7 +1674,7 @@ function GarageFormModal({ title, form, setForm, apartments, processing, onSubmi
                 value={form.type}
                 onChange={e => {
                   const newType = e.target.value;
-                  setForm({ ...form, type: newType as GarageType, apartmentId: newType === "visitante" ? "" : form.apartmentId });
+                  setForm({ ...form, type: newType as GarageType, apartmentId: newType !== "fija" ? "" : form.apartmentId });
                 }}
                 disabled={processing}
               >
@@ -1688,7 +1696,7 @@ function GarageFormModal({ title, form, setForm, apartments, processing, onSubmi
               </select>
             </div>
           </div>
-          {form.type !== "visitante" && (
+          {form.type === "fija" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Unidad asignada</label>
               <select
