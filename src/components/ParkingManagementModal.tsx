@@ -469,8 +469,17 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredGarages.map(g => (
-                        <tr key={g.id} className="hover:bg-gray-50 transition-colors">
+                      {filteredGarages.map(g => {
+                        const _now = new Date();
+                        const activeVisitor = visitorParkings.find(
+                          vp =>
+                            vp.garageId === g.id &&
+                            vp.status === "activa" &&
+                            new Date(vp.startTime) <= _now &&
+                            new Date(vp.endTime)   >= _now
+                        );
+                        return (
+                        <tr key={g.id} className={`transition-colors ${activeVisitor ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"}`}>
                           <td className="px-4 py-3 font-semibold text-gray-800">{g.number}</td>
                           <td className="px-4 py-3 text-gray-600">
                             {g.location
@@ -489,9 +498,18 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {g.apartment
-                              ? <span className="flex items-center gap-1 text-gray-700"><Building className="w-3.5 h-3.5 text-gray-400" />Unidad {g.apartment.unit} · Piso {g.apartment.floor}</span>
-                              : <span className="text-gray-400">Sin asignar</span>}
+                            {activeVisitor ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 border border-amber-300 rounded-full text-xs font-semibold">
+                                  Visitante en reserva
+                                </span>
+                                <span className="text-amber-600 text-xs font-medium">{activeVisitor.licensePlate}</span>
+                              </span>
+                            ) : g.apartment ? (
+                              <span className="flex items-center gap-1 text-gray-700"><Building className="w-3.5 h-3.5 text-gray-400" />Unidad {g.apartment.unit} · Piso {g.apartment.floor}</span>
+                            ) : (
+                              <span className="text-gray-400">Sin asignar</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`font-medium ${g.vehicleCount > 0 ? "text-slate-700" : "text-gray-400"}`}>
@@ -514,7 +532,8 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
