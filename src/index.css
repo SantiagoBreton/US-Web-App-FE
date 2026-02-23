@@ -1,2 +1,286 @@
 
 @import "tailwindcss";
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-track-gray-100::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-gray-300:hover::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6;
+}
+
+/* Hidden scrollbar - maintain scroll functionality but hide the bar */
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Remove spinner arrows from number inputs */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Ensure all interactive buttons have cursor pointer */
+button:not(:disabled):not([disabled]):not(.cursor-not-allowed) {
+  cursor: pointer;
+}
+
+/* Ensure clickable elements have cursor pointer */
+[role="button"]:not(:disabled):not([disabled]):not(.cursor-not-allowed),
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Ensure disabled buttons have appropriate cursor */
+button:disabled,
+button[disabled],
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+/* ========================================
+   GAMIFICATION FRAMES
+   ======================================== */
+
+/* Default frame - no special styling */
+.frame-none {
+  /* No additional styling */
+}
+
+/* Silver frame - subtle border */
+.frame-silver {
+  box-shadow: 0 0 0 2px #C0C0C0, 0 4px 6px rgba(192, 192, 192, 0.2);
+  border: 2px solid #E5E5E5;
+}
+
+/* Gold frame - golden border with glow */
+.frame-gold {
+  box-shadow: 0 0 0 2px #FFD700, 0 0 10px rgba(255, 215, 0, 0.4), 0 4px 8px rgba(255, 215, 0, 0.3);
+  border: 2px solid #FFC800;
+}
+
+/* Platinum frame - platinum border with shimmer */
+.frame-platinum {
+  box-shadow: 0 0 0 3px #E5E4E2, 0 0 15px rgba(229, 228, 226, 0.5), 0 4px 10px rgba(229, 228, 226, 0.4);
+  border: 3px solid #B4B4B4;
+  background-clip: padding-box;
+}
+
+/* Diamond frame - crystal border with sparkle */
+.frame-diamond {
+  box-shadow: 0 0 0 3px #B9F2FF, 0 0 20px rgba(185, 242, 255, 0.6), 0 0 30px rgba(0, 191, 255, 0.4), 0 4px 12px rgba(0, 191, 255, 0.5);
+  border: 3px solid #00BFFF;
+  position: relative;
+}
+
+/* Legendary frame - rainbow animated border */
+.frame-legendary {
+  position: relative;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.4), 0 4px 15px rgba(255, 0, 255, 0.6);
+}
+
+.frame-legendary::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  padding: 3px;
+  background: linear-gradient(45deg, #ff0080, #ff8c00, #40e0d0, #ff0080);
+  background-size: 400% 400%;
+  animation: gradientRotate 3s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  z-index: -1;
+}
+
+/* ========================================
+   GAMIFICATION EFFECTS
+   ======================================== */
+
+/* No effect */
+.effect-none {
+  /* No additional styling */
+}
+
+/* Shimmer effect */
+.effect-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.effect-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 3s infinite;
+  transform: rotate(45deg);
+}
+
+/* Glow effect */
+.effect-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Sparkle effect */
+.effect-sparkle {
+  position: relative;
+}
+
+.effect-sparkle::before {
+  content: '✨';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 16px;
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+
+/* Holographic effect */
+.effect-holographic {
+  position: relative;
+  background: linear-gradient(
+    45deg,
+    rgba(255, 0, 0, 0.1) 0%,
+    rgba(255, 255, 0, 0.1) 25%,
+    rgba(0, 255, 0, 0.1) 50%,
+    rgba(0, 255, 255, 0.1) 75%,
+    rgba(0, 0, 255, 0.1) 100%
+  );
+  background-size: 200% 200%;
+  animation: holographic 3s linear infinite;
+}
+
+/* Rainbow effect */
+.effect-rainbow {
+  animation: rainbow 4s linear infinite;
+  filter: hue-rotate(0deg);
+}
+
+/* Trail effect */
+.effect-trail {
+  position: relative;
+}
+
+.effect-trail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.5;
+  background: inherit;
+  filter: blur(8px);
+  z-index: -1;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ========================================
+   GAMIFICATION ANIMATIONS
+   ======================================== */
+
+@keyframes gradientRotate {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 0 10px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 20px currentColor);
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2) rotate(180deg);
+  }
+}
+
+@keyframes holographic {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes rainbow {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}

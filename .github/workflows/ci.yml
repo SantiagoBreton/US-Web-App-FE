@@ -1,0 +1,120 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Lint code
+      run: npm run lint
+
+    - name: Run tests with coverage
+      id: test
+      run: npm run test:ci-safe
+
+    - name: Generate Coverage Summary
+      if: always()
+      run: |
+        if [ -f "coverage/coverage-summary.json" ]; then
+          echo "Coverage files found, generating summary..."
+          node -e "
+          const fs = require('fs');
+          try {
+            const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            const total = coverage.total;
+            console.log('📊 Coverage Summary:');
+            console.log('Lines: ' + total.lines.pct + '%');
+            console.log('Functions: ' + total.functions.pct + '%');
+            console.log('Branches: ' + total.branches.pct + '%');
+            console.log('Statements: ' + total.statements.pct + '%');
+            
+            // Set GitHub Actions output
+            console.log('::set-output name=lines::' + total.lines.pct);
+            console.log('::set-output name=functions::' + total.functions.pct);
+            console.log('::set-output name=branches::' + total.branches.pct);
+            console.log('::set-output name=statements::' + total.statements.pct);
+          } catch (error) {
+            console.log('Could not parse coverage summary:', error.message);
+          }
+          "
+        else
+          echo "No coverage files found"
+        fi
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: dist/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-files
+        path: dist/
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dist

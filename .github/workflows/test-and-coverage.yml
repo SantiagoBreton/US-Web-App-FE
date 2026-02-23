@@ -1,0 +1,138 @@
+name: 🧪 Test Suite & Coverage
+
+on:
+  push:
+    branches: [ main, dev, Development, Admin_feature ]
+  pull_request:
+    branches: [ main, dev, Development ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🔍 Lint code
+      run: npm run lint --if-present
+      continue-on-error: true
+      
+    - name: 🧪 Run tests with coverage
+      run: npm run test:ci-safe
+      
+    - name: 📊 Generate coverage summary  
+      id: coverage
+      run: |
+        # Extract coverage data using Node.js for reliability
+        node -e "
+          const fs = require('fs');
+          try {
+            const data = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            const lines = data.total.lines.pct || 0;
+            const functions = data.total.functions.pct || 0;
+            const branches = data.total.branches.pct || 0;
+            const statements = data.total.statements.pct || 0;
+            
+            console.log('lines=' + lines);
+            console.log('functions=' + functions);
+            console.log('branches=' + branches);
+            console.log('statements=' + statements);
+            
+            // Determine color based on lines coverage
+            let color = 'red';
+            if (lines >= 90) color = 'brightgreen';
+            else if (lines >= 80) color = 'green';
+            else if (lines >= 70) color = 'yellow';
+            else if (lines >= 60) color = 'orange';
+            
+            console.log('color=' + color);
+          } catch (e) {
+            console.log('lines=0');
+            console.log('functions=0');
+            console.log('branches=0');
+            console.log('statements=0');
+            console.log('color=red');
+          }
+        " >> $GITHUB_OUTPUT
+      if: matrix.node-version == 20
+      
+    - name: 📊 Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+      if: matrix.node-version == 20
+        
+    - name: 📈 Coverage comment on PR
+      uses: romeovs/lcov-reporter-action@v0.3.1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        lcov-file: ./coverage/lcov.info
+        delete-old-comments: true
+        title: "📊 Test Coverage Report"
+      if: github.event_name == 'pull_request' && matrix.node-version == 20
+
+    - name: 📊 Coverage Summary
+      run: |
+        echo "## 🧪 Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Node Version | ${{ matrix.node-version }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Lines Coverage | ${{ steps.coverage.outputs.lines }}% |" >> $GITHUB_STEP_SUMMARY
+        echo "| Functions Coverage | ${{ steps.coverage.outputs.functions }}% |" >> $GITHUB_STEP_SUMMARY
+        echo "| Branches Coverage | ${{ steps.coverage.outputs.branches }}% |" >> $GITHUB_STEP_SUMMARY
+        echo "| Statements Coverage | ${{ steps.coverage.outputs.statements }}% |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Coverage Badge" >> $GITHUB_STEP_SUMMARY
+        echo "![Coverage](https://img.shields.io/badge/coverage-${{ steps.coverage.outputs.lines }}%25-${{ steps.coverage.outputs.color }})" >> $GITHUB_STEP_SUMMARY
+      if: success() && matrix.node-version == 20
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🏗️ Build project
+      run: npm run build
+      
+    - name: 📤 Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files-${{ github.sha }}
+        path: dist/
+        retention-days: 30
+
+    - name: 🎉 Build Success
+      run: |
+        echo "## 🏗️ Build Completed Successfully" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Project built without errors" >> $GITHUB_STEP_SUMMARY
+        echo "📦 Build artifacts uploaded" >> $GITHUB_STEP_SUMMARY

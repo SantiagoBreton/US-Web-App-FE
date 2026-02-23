@@ -1,0 +1,169 @@
+name: 📊 Metrics Dashboard
+
+on:
+  push:
+    branches: [ main, Development ]
+  pull_request:
+    branches: [ main, Development ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for better metrics
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🧪 Run tests with coverage
+      run: npm run test:coverage
+
+    - name: 📏 Code quality metrics
+      id: quality
+      run: |
+        # Count lines of code
+        LOC=$(find src -name "*.ts" -o -name "*.tsx" | xargs wc -l | tail -1 | awk '{print $1}')
+        echo "loc=$LOC" >> $GITHUB_OUTPUT
+        
+        # Count files
+        FILES=$(find src -name "*.ts" -o -name "*.tsx" | wc -l)
+        echo "files=$FILES" >> $GITHUB_OUTPUT
+        
+        # Count components
+        COMPONENTS=$(find src/components -name "*.tsx" | wc -l)
+        echo "components=$COMPONENTS" >> $GITHUB_OUTPUT
+        
+        # Count pages
+        PAGES=$(find src/pages -name "*.tsx" | wc -l)
+        echo "pages=$PAGES" >> $GITHUB_OUTPUT
+        
+        # Count tests
+        TESTS=$(find src -name "*.test.ts" -o -name "*.test.tsx" | wc -l)
+        echo "tests=$TESTS" >> $GITHUB_OUTPUT
+
+    - name: 📊 Extract coverage metrics
+      id: coverage
+      run: |
+        # Extract detailed coverage using Node.js for reliability
+        node -e "
+          const fs = require('fs');
+          try {
+            const data = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            console.log('lines=' + (data.total.lines.pct || 0));
+            console.log('functions=' + (data.total.functions.pct || 0));
+            console.log('branches=' + (data.total.branches.pct || 0));
+            console.log('statements=' + (data.total.statements.pct || 0));
+          } catch (e) {
+            console.log('lines=0');
+            console.log('functions=0');
+            console.log('branches=0');
+            console.log('statements=0');
+          }
+        " >> $GITHUB_OUTPUT
+
+    - name: 🎯 Test metrics
+      id: test_metrics
+      run: |
+        # Run tests and capture output
+        npm run test:run > test_output.txt 2>&1 || true
+        
+        # Extract test counts
+        TOTAL_TESTS=$(grep -o '[0-9]* passed' test_output.txt | awk '{sum += $1} END {print sum}' || echo "0")
+        FAILED_TESTS=$(grep -o '[0-9]* failed' test_output.txt | awk '{sum += $1} END {print sum}' || echo "0")
+        SKIPPED_TESTS=$(grep -o '[0-9]* skipped' test_output.txt | awk '{sum += $1} END {print sum}' || echo "0")
+        
+        echo "total=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+        echo "failed=$FAILED_TESTS" >> $GITHUB_OUTPUT
+        echo "skipped=$SKIPPED_TESTS" >> $GITHUB_OUTPUT
+        echo "passed=$((TOTAL_TESTS - FAILED_TESTS))" >> $GITHUB_OUTPUT
+
+    - name: 📈 Generate comprehensive dashboard
+      run: |
+        echo "# 🚀 US Web App - Project Metrics Dashboard" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Generated on: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "## 📊 Test Coverage" >> $GITHUB_STEP_SUMMARY
+        echo "| Type | Percentage | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|------------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        # Use Node.js for reliable numeric comparisons
+        LINES_STATUS=$(node -e "console.log(${{ steps.coverage.outputs.lines }} >= 80 ? '✅ Good' : '⚠️ Needs Improvement')")
+        FUNCTIONS_STATUS=$(node -e "console.log(${{ steps.coverage.outputs.functions }} >= 80 ? '✅ Good' : '⚠️ Needs Improvement')")
+        BRANCHES_STATUS=$(node -e "console.log(${{ steps.coverage.outputs.branches }} >= 80 ? '✅ Good' : '⚠️ Needs Improvement')")
+        STATEMENTS_STATUS=$(node -e "console.log(${{ steps.coverage.outputs.statements }} >= 80 ? '✅ Good' : '⚠️ Needs Improvement')")
+        
+        echo "| 📝 Lines | ${{ steps.coverage.outputs.lines }}% | $LINES_STATUS |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔧 Functions | ${{ steps.coverage.outputs.functions }}% | $FUNCTIONS_STATUS |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🌿 Branches | ${{ steps.coverage.outputs.branches }}% | $BRANCHES_STATUS |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📄 Statements | ${{ steps.coverage.outputs.statements }}% | $STATEMENTS_STATUS |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Count | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        # Use simple shell comparisons for test results
+        if [ "${{ steps.test_metrics.outputs.failed }}" = "0" ]; then
+          TEST_STATUS="🎉 All Good"
+          FAILED_STATUS="✅ None"
+        else
+          TEST_STATUS="⚠️ Some Failed"
+          FAILED_STATUS="🔴 Need Fixes"
+        fi
+        
+        echo "| ✅ Passed | ${{ steps.test_metrics.outputs.passed }} | $TEST_STATUS |" >> $GITHUB_STEP_SUMMARY
+        echo "| ❌ Failed | ${{ steps.test_metrics.outputs.failed }} | $FAILED_STATUS |" >> $GITHUB_STEP_SUMMARY
+        echo "| ⏭️ Skipped | ${{ steps.test_metrics.outputs.skipped }} | - |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📊 Total | ${{ steps.test_metrics.outputs.total }} | - |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "## 📏 Code Metrics" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Count | Note |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 📄 Total Files | ${{ steps.quality.outputs.files }} | TypeScript/TSX files |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📝 Lines of Code | ${{ steps.quality.outputs.loc }} | Total LOC |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧩 Components | ${{ steps.quality.outputs.components }} | React components |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📖 Pages | ${{ steps.quality.outputs.pages }} | Application pages |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧪 Test Files | ${{ steps.quality.outputs.tests }} | Test coverage |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "## 🏷️ Badges" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Generate badge colors using Node.js
+        LINES_COLOR=$(node -e "console.log(${{ steps.coverage.outputs.lines }} >= 80 ? 'green' : 'orange')")
+        FUNCTIONS_COLOR=$(node -e "console.log(${{ steps.coverage.outputs.functions }} >= 80 ? 'green' : 'orange')")
+        BRANCHES_COLOR=$(node -e "console.log(${{ steps.coverage.outputs.branches }} >= 80 ? 'green' : 'orange')")
+        TESTS_COLOR=$(node -e "console.log(${{ steps.test_metrics.outputs.failed }} == 0 ? 'green' : 'red')")
+        
+        echo "![Lines Coverage](https://img.shields.io/badge/lines-${{ steps.coverage.outputs.lines }}%25-$LINES_COLOR)" >> $GITHUB_STEP_SUMMARY
+        echo "![Functions Coverage](https://img.shields.io/badge/functions-${{ steps.coverage.outputs.functions }}%25-$FUNCTIONS_COLOR)" >> $GITHUB_STEP_SUMMARY
+        echo "![Branches Coverage](https://img.shields.io/badge/branches-${{ steps.coverage.outputs.branches }}%25-$BRANCHES_COLOR)" >> $GITHUB_STEP_SUMMARY
+        echo "![Tests](https://img.shields.io/badge/tests-${{ steps.test_metrics.outputs.passed }}%20passed-$TESTS_COLOR)" >> $GITHUB_STEP_SUMMARY
+        echo "![Components](https://img.shields.io/badge/components-${{ steps.quality.outputs.components }}-blue)" >> $GITHUB_STEP_SUMMARY
+        echo "![LOC](https://img.shields.io/badge/LOC-${{ steps.quality.outputs.loc }}-informational)" >> $GITHUB_STEP_SUMMARY
+
+    - name: 📤 Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report-${{ github.sha }}
+        path: |
+          coverage/
+          test_output.txt
+        retention-days: 30
