@@ -137,7 +137,8 @@ function ManagementModal<T extends BaseItem>({
       setFormData(initialFormData);
     } catch (error) {
       console.error("Error creating item:", error);
-      showToast(`Error al crear ${title.toLowerCase()}`, "error");
+      const errorMessage = error instanceof Error ? error.message : `Error al crear ${title.toLowerCase()}`;
+      showToast(errorMessage, "error");
     } finally {
       setProcessing(false);
     }
@@ -164,7 +165,8 @@ function ManagementModal<T extends BaseItem>({
       setFormData(initialFormData);
     } catch (error) {
       console.error("Error updating item:", error);
-      showToast(`Error al actualizar ${title.toLowerCase()}`, "error");
+      const errorMessage = error instanceof Error ? error.message : `Error al actualizar ${title.toLowerCase()}`;
+      showToast(errorMessage, "error");
     } finally {
       setProcessing(false);
     }
