@@ -594,10 +594,17 @@ function TenantDashboard() {
                                             <p className="font-bold text-gray-800 text-sm">{g.number}</p>
                                             {g.location && <p className="text-gray-400 text-xs truncate">{g.location}</p>}
                                             {g.vehicles.length > 0 ? (
-                                                <p className="text-xs font-mono font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
-                                                    <Car className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                                                    {g.vehicles.map(v => v.licensePlate).join(', ')}
-                                                </p>
+                                                <div className="mt-0.5 space-y-0.5">
+                                                    {g.vehicles.map(v => (
+                                                        <p key={v.id} className="text-xs font-mono font-semibold text-slate-600 flex items-center gap-1">
+                                                            <Car className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                                            {v.licensePlate}
+                                                            {v.user.id !== userData?.user.id && (
+                                                                <span className="font-sans font-normal text-gray-400 ml-1">({v.user.name})</span>
+                                                            )}
+                                                        </p>
+                                                    ))}
+                                                </div>
                                             ) : (
                                                 <p className="text-xs text-gray-400 mt-0.5">Sin auto asignado</p>
                                             )}

@@ -124,6 +124,7 @@ export interface MyGarage {
     brand:        string;
     model:        string;
     color:        string;
+    user:         { id: number; name: string };
   }[];
 }
 
