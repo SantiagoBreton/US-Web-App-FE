@@ -580,11 +580,15 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
               <div className="flex gap-4 mb-4">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-sm">
                   <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="font-medium text-green-800">{garages.filter(g => g.apartment).length} asignadas</span>
+                  <span className="font-medium text-green-800">{garages.filter(g => g.type === 'fija' && g.apartment).length} fijas asignadas</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-sm">
                   <AlertCircle className="w-4 h-4 text-amber-600" />
-                  <span className="font-medium text-amber-800">{garages.filter(g => !g.apartment).length} sin asignar</span>
+                  <span className="font-medium text-amber-800">{garages.filter(g => g.type === 'fija' && !g.apartment).length} fijas sin asignar</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                  <AlertCircle className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-blue-800">{garages.filter(g => g.type !== 'fija').length} temporales</span>
                 </div>
               </div>
 
@@ -616,34 +620,40 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {editingAssignId === g.id ? (
-                              <div className="flex items-center gap-2">
-                                <select
-                                  className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer"
-                                  value={selectedAssignApt}
-                                  onChange={e => setSelectedAssignApt(e.target.value)}
-                                >
-                                  <option value="">Sin asignar</option>
-                                  {apartments.map(a => (
-                                    <option key={a.id} value={a.id}>Unidad {a.unit} · Piso {a.floor}</option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => handleAssign(g.id)}
-                                  disabled={!selectedAssignApt || processingAssign === g.id}
-                                  className="px-2 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 disabled:opacity-40 cursor-pointer"
-                                >
-                                  {processingAssign === g.id ? "..." : "OK"}
-                                </button>
-                                <button onClick={() => setEditingAssignId(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg cursor-pointer">
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                            {g.type === "fija" ? (
+                              editingAssignId === g.id ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer"
+                                    value={selectedAssignApt}
+                                    onChange={e => setSelectedAssignApt(e.target.value)}
+                                  >
+                                    <option value="">Sin asignar</option>
+                                    {apartments.map(a => (
+                                      <option key={a.id} value={a.id}>Unidad {a.unit} · Piso {a.floor}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => handleAssign(g.id)}
+                                    disabled={!selectedAssignApt || processingAssign === g.id}
+                                    className="px-2 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 disabled:opacity-40 cursor-pointer"
+                                  >
+                                    {processingAssign === g.id ? "..." : "OK"}
+                                  </button>
+                                  <button onClick={() => setEditingAssignId(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg cursor-pointer">
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className={g.apartment ? "flex items-center gap-1 text-gray-700" : "text-gray-400"}>
+                                  {g.apartment
+                                    ? <><Building className="w-3.5 h-3.5 text-gray-400" />Unidad {g.apartment.unit} · Piso {g.apartment.floor}</>
+                                    : "Sin asignar"}
+                                </span>
+                              )
                             ) : (
-                              <span className={g.apartment ? "flex items-center gap-1 text-gray-700" : "text-gray-400"}>
-                                {g.apartment
-                                  ? <><Building className="w-3.5 h-3.5 text-gray-400" />Unidad {g.apartment.unit} · Piso {g.apartment.floor}</>
-                                  : "Sin asignar"}
+                              <span className="text-xs text-gray-500 italic">
+                                Asignación temporal
                               </span>
                             )}
                           </td>
@@ -655,23 +665,31 @@ export default function ParkingManagementModal({ isOpen, onClose, token }: Props
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1">
-                              <button
-                                onClick={() => openAssignEdit(g)}
-                                disabled={editingAssignId === g.id}
-                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
-                                title="Cambiar asignación"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              {g.apartment && (
-                                <button
-                                  onClick={() => handleUnassign(g.id)}
-                                  disabled={processingAssign === g.id}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
-                                  title="Desasignar"
-                                >
-                                  <Unlink className="w-3.5 h-3.5" />
-                                </button>
+                              {g.type === "fija" ? (
+                                <>
+                                  <button
+                                    onClick={() => openAssignEdit(g)}
+                                    disabled={editingAssignId === g.id}
+                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                                    title="Cambiar asignación"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  {g.apartment && (
+                                    <button
+                                      onClick={() => handleUnassign(g.id)}
+                                      disabled={processingAssign === g.id}
+                                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                                      title="Desasignar"
+                                    >
+                                      <Unlink className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-500 italic px-2 py-1">
+                                  {g.type === "cortesia" ? "Se asigna por cortesía" : "Se asigna por visitante"}
+                                </span>
                               )}
                             </div>
                           </td>
