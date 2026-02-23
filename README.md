@@ -1,26 +1,3 @@
-# US Web### 🧪 Test Coverage & Quality
-[![📊 Codecov](https://codecov.io/gh/SantiagoBreton/US-Web-App/branch/main/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/SantiagoBreton/US-Web-App)
-[![📝 Coverage Badge](https://gist.github.com/SantiagoBreton/50121124d489e837ad2fb4a675441036/raw/coverage-badge.svg)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/coverage-badge.yml)
-[![✅ Tests](https://img.shields.io/badge/tests-105%20passed-brightgreen)](https://github.com/SantiagoBreton/US-Web-App/actions)
-[![🎯 Quality Gate](https://img.shields.io/badge/quality%20gate-passing-success)](https://github.com/SantiagoBreton/US-Web-App/actions)
-
-### 📊 Current Coverage Metrics
-[![📝 Lines Coverage](https://img.shields.io/badge/lines-26.8%25-red)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/coverage-badge.yml)
-[![🔧 Functions Coverage](https://img.shields.io/badge/functions-50.99%25-orange)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/test-and-coverage.yml)
-[![🌿 Branches Coverage](https://img.shields.io/badge/branches-84.42%25-green)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/test-and-coverage.yml)
-[![📄 Statements Coverage](https://img.shields.io/badge/statements-26.8%25-orange)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/test-and-coverage.yml)Frontend 🏠
-
-## 📊 Project Status & Metrics
-
-[![🚀 CI/CD Pipeline](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/test-and-coverage.yml)
-[![📈 Metrics Dashboard](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/metrics-dashboard.yml/badge.svg)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/metrics-dashboard.yml)
-[![🔧 Development CI](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/dev.yml/badge.svg)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/dev.yml)
-
-### 🧪 Test Coverage & Quality
-[![📊 Codecov](https://codecov.io/gh/SantiagoBreton/US-Web-App/branch/main/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/SantiagoBreton/US-Web-App)
-[![📝 Coverage Badge](https://gist.github.com/SantiagoBreton/50121124d489e837ad2fb4a675441036/raw/coverage-badge.svg)](https://github.com/SantiagoBreton/US-Web-App/actions/workflows/coverage-badge.yml)
-[![✅ Tests](https://img.shields.io/badge/tests-100%2B%20passing-brightgreen)](https://github.com/SantiagoBreton/US-Web-App/actions)
-[![🎯 Quality Gate](https://img.shields.io/badge/quality%20gate-passing-success)](https://github.com/SantiagoBreton/US-Web-App/actions)
 
 ### 🛠️ Tech Stack & Tools
 [![⚛️ React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)](https://reactjs.org/)
