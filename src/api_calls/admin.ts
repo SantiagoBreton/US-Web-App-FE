@@ -190,6 +190,25 @@ export async function updateUserRole(token: string, userId: number, role: string
     return response.json();
 }
 
+export async function updateUserApartment(token: string, userId: number, apartmentId: number | null): Promise<AdminUser> {
+    const response = await fetch(`${API_URL}/admin/users/${userId}/apartment`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ apartmentId })
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `Failed to update user apartment: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.user;
+}
+
 export async function getAdminReservations(
     token: string, 
     params?: {

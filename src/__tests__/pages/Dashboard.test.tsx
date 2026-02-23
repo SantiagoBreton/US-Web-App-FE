@@ -135,21 +135,21 @@ describe('Dashboard Page', () => {
     });
   });
 
-  it('shows tenant dashboard for owner users', async () => {
+  it('shows tenant dashboard for tenant users', async () => {
     localStorage.setItem('token', mockToken);
     
-    const mockOwnerData = {
+    const mockTenantData = {
       user: {
         id: 3,
-        name: 'Owner User',
-        email: 'owner@example.com',
-        role: 'owner'
+        name: 'Tenant User',
+        email: 'tenant@example.com',
+        role: 'tenant'
       }
     };
     
     (global.fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(mockOwnerData)
+      json: () => Promise.resolve(mockTenantData)
     });
     
     render(<Dashboard />);

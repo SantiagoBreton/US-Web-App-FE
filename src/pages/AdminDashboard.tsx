@@ -341,12 +341,12 @@ function AdminDashboard() {
                             <h3 className="text-xl font-bold text-gray-800">Gestión de Usuarios</h3>
                         </div>
                         <p className="text-gray-600 mb-4">
-                            Administra usuarios, roles y permisos del sistema
+                            Administra usuarios y asignación de apartamentos
                         </p>
                         <div className="text-sm text-gray-500">
                             • Ver todos los usuarios<br />
-                            • Editar roles y permisos<br />
-                            • Activar/desactivar cuentas
+                            • Asignar usuarios a apartamentos<br />
+                            • Gestionar información de inquilinos
                         </div>
                     </motion.div>
 

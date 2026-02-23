@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Search, Crown, Home, AlertTriangle, ChevronDown, UserCheck, User } from "lucide-react";
-import { getAdminUsers, updateUserRole, type AdminUser } from "../api_calls/admin";
+import { Users, Search, Crown, AlertTriangle, ChevronDown, UserCheck, User } from "lucide-react";
+import { getAdminUsers, updateUserApartment, getAdminApartments, type AdminUser, type AdminApartment } from "../api_calls/admin";
 import ClaimSuccessToast from './ClaimSuccessToast';
 import ClaimErrorToast from './ClaimErrorToast';
 import GenericFilterModal, { type FilterOption } from "./GenericFilterModal";
@@ -19,6 +19,7 @@ interface UserManagementProps {
 
 function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManagementProps) {
     const [users, setUsers] = useState<AdminUser[]>([]);
+    const [apartments, setApartments] = useState<AdminApartment[]>([]);
     const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -46,12 +47,6 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
             icon: UserCheck
         },
         {
-            value: "owner",
-            label: "Propietarios",
-            description: "Usuarios propietarios de apartamentos",
-            icon: Crown
-        },
-        {
             value: "tenant",
             label: "Inquilinos",
             description: "Usuarios inquilinos de apartamentos",
@@ -62,6 +57,7 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
     useEffect(() => {
         if (isOpen && token) {
             loadUsers();
+            loadApartments();
         }
     }, [isOpen, token]);
 
@@ -101,24 +97,46 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
         }
     };
 
-    const handleRoleChange = async (userId: number, newRole: string) => {
-        if (!confirm(`¿Estás seguro de cambiar el role de este usuario a "${newRole}"?`)) {
+    const loadApartments = async () => {
+        try {
+            const apartmentsData = await getAdminApartments(token);
+            if (Array.isArray(apartmentsData)) {
+                setApartments(apartmentsData);
+            } else {
+                console.error("Apartments data is not an array:", apartmentsData);
+                setApartments([]);
+            }
+        } catch (error) {
+            console.error("Error loading apartments:", error);
+            setApartments([]);
+        }
+    };
+
+    const handleApartmentChange = async (userId: number, newApartmentId: number | null) => {
+        const selectedApartment = apartments.find(apt => apt.id === newApartmentId);
+        const apartmentName = selectedApartment ? `${selectedApartment.unit} (Piso ${selectedApartment.floor})` : "sin apartamento";
+        
+        if (!confirm(`¿Estás seguro de mover este usuario a ${apartmentName}?`)) {
             return;
         }
 
         setUpdatingUserId(userId);
         try {
-            const updatedUser = await updateUserRole(token, userId, newRole);
+            const updatedUser = await updateUserApartment(token, userId, newApartmentId);
             
             setUsers(prev => prev.map(user => 
-                user.id === userId ? { ...user, role: updatedUser.role } : user
+                user.id === userId ? { 
+                    ...user, 
+                    apartmentId: updatedUser.apartmentId,
+                    apartment: updatedUser.apartment 
+                } : user
             ));
             
-            setToastMessage("Role actualizado exitosamente");
+            setToastMessage("Apartamento actualizado exitosamente");
             setShowSuccessToast(true);
         } catch (error) {
-            console.error("Error updating role:", error);
-            setErrorMessage("Error al actualizar role: " + (error instanceof Error ? error.message : "Error desconocido"));
+            console.error("Error updating apartment:", error);
+            setErrorMessage("Error al actualizar apartamento: " + (error instanceof Error ? error.message : "Error desconocido"));
             setShowErrorToast(true);
         } finally {
             setUpdatingUserId(null);
@@ -128,7 +146,6 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
     const getRoleIcon = (role: string) => {
         switch (role) {
             case "admin": return <Crown className="w-4 h-4 text-yellow-500" />;
-            case "owner": return <Home className="w-4 h-4 text-blue-500" />;
             case "tenant": return <Users className="w-4 h-4 text-green-500" />;
             default: return <Users className="w-4 h-4 text-gray-500" />;
         }
@@ -137,7 +154,6 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
     const getRoleBadgeColor = (role: string) => {
         switch (role) {
             case "admin": return "bg-yellow-100 text-yellow-800 border-yellow-300";
-            case "owner": return "bg-blue-100 text-blue-800 border-blue-300";
             case "tenant": return "bg-green-100 text-green-800 border-green-300";
             default: return "bg-gray-100 text-gray-800 border-gray-300";
         }
@@ -237,21 +253,30 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
                                                         <span className="text-sm text-gray-600 font-medium">Tu cuenta</span>
                                                         <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
                                                             {getRoleIcon(user.role)}
-                                                            {user.role}
+                                                            {user.role === 'admin' ? 'Administrador' : 'Inquilino'}
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    // Para otros usuarios, permitir cambiar rol
-                                                    <select
-                                                        value={user.role}
-                                                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                                        disabled={updatingUserId === user.id}
-                                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 cursor-pointer"
-                                                    >
-                                                        <option value="tenant">Inquilino</option>
-                                                        <option value="owner">Propietario</option>
-                                                        <option value="admin">Administrador</option>
-                                                    </select>
+                                                    // Para otros usuarios, mostrar selector de apartamento
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
+                                                            {getRoleIcon(user.role)}
+                                                            {user.role === 'admin' ? 'Administrador' : 'Inquilino'}
+                                                        </div>
+                                                        <select
+                                                            value={user.apartmentId || ""}
+                                                            onChange={(e) => handleApartmentChange(user.id, e.target.value ? parseInt(e.target.value) : null)}
+                                                            disabled={updatingUserId === user.id}
+                                                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 cursor-pointer text-sm"
+                                                        >
+                                                            <option value="">Sin apartamento</option>
+                                                            {apartments.map(apt => (
+                                                                <option key={apt.id} value={apt.id}>
+                                                                    {apt.unit} - Piso {apt.floor} ({apt.rooms} hab.)
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                 )}
                                                 
                                                 {updatingUserId === user.id && (
@@ -275,7 +300,7 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
 
                     {/* Stats Footer */}
                     <div className="border-t border-gray-200 pt-4 mt-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                             <div>
                                 <div className="text-2xl font-bold text-blue-600">{Array.isArray(users) ? users.length : 0}</div>
                                 <div className="text-sm text-gray-500">Total Usuarios</div>
@@ -283,10 +308,6 @@ function UserManagement({ isOpen, onClose, token, currentUserEmail }: UserManage
                             <div>
                                 <div className="text-2xl font-bold text-yellow-600">{Array.isArray(users) ? users.filter(u => u.role === 'admin').length : 0}</div>
                                 <div className="text-sm text-gray-500">Administradores</div>
-                            </div>
-                            <div>
-                                <div className="text-2xl font-bold text-purple-600">{Array.isArray(users) ? users.filter(u => u.role === 'owner').length : 0}</div>
-                                <div className="text-sm text-gray-500">Propietarios</div>
                             </div>
                             <div>
                                 <div className="text-2xl font-bold text-green-600">{Array.isArray(users) ? users.filter(u => u.role === 'tenant').length : 0}</div>
