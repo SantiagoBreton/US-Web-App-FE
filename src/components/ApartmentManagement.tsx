@@ -280,11 +280,11 @@ function ApartmentManagement({ isOpen, onClose, token }: ApartmentManagementProp
             onClick={onClose}
         >
             <div 
-                className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+                className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-8 border-b border-gray-200">
+                <div className="p-8 border-b border-gray-200 flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -305,7 +305,7 @@ function ApartmentManagement({ isOpen, onClose, token }: ApartmentManagementProp
                 </div>
 
                 {/* Controls */}
-                <div className="p-6 border-b border-gray-200 bg-gray-50">
+                <div className="p-6 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                     <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
                         <div className="flex flex-col sm:flex-row gap-4 flex-1">
                             {/* Search */}
